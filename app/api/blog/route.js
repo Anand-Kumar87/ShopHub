@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs'; // 🔥 Added Node.js runtime for Vercel consistency
 
 import { NextResponse } from 'next/server';
-
 
 export async function GET() {
     const posts = [

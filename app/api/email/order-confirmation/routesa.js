@@ -1,7 +1,10 @@
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
+
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req) {
     try {
@@ -10,7 +13,7 @@ export async function POST(req) {
         // 1. फाइनल टोटल को सेट करना
         const displayTotal = order.formatted_total || `₹${Number(order.total_amount).toFixed(2)}`;
 
-        // 🔥 2. स्मार्ट कनवर्ज़न लॉजिक (ताकि Subtotal, Tax आदि सही करेंसी में दिखें)
+        // 🔥 2. स्मार्ट कनवर्ज़न लॉजिक (ताकि Subtotal, Tax आदि सही करेंसी में दिखें)
         let rate = 1;
         let currencySymbol = order.currency || '₹';
 
@@ -108,25 +111,14 @@ export async function POST(req) {
             </div>
         `;
 
-        // 5. Nodemailer Setup (Resend की जगह)
-        const transporter = nodemailer.createTransport({
-            service: 'gmail',
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS,
-            },
-        });
-
-        const mailOptions = {
-            from: `"ShopHub" <${process.env.EMAIL_USER}>`,
-            to: order.email, // कस्टमर का ईमेल
+        const data = await resend.emails.send({
+            from: 'ShopHub <onboarding@resend.dev>',
+            to: order.email,
             subject: `ShopHub Order Confirmed & Invoice: ${order.orderNumber}`,
             html: emailHtml
-        };
+        });
 
-        const info = await transporter.sendMail(mailOptions);
-
-        return NextResponse.json({ success: true, data: info });
+        return NextResponse.json({ success: true, data });
 
     } catch (error) {
         console.error("Email API Error:", error);

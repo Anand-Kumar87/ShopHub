@@ -1,12 +1,11 @@
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs'; // 🔥 Added Node.js runtime to fix Vercel build
 
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 
-
-const prisma = new PrismaClient();
-
 export async function GET(request) {
+    const prisma = new PrismaClient(); // 🔥 Moved inside function
     try {
         // 1. Parse URL Parameters
         const { searchParams } = new URL(request.url);
@@ -43,6 +42,7 @@ export async function GET(request) {
             prisma.product.count({ where })
         ]);
 
+        await prisma.$disconnect();
         return NextResponse.json({
             products,
             totalPages: Math.ceil(totalProducts / limit),
@@ -52,17 +52,22 @@ export async function GET(request) {
 
     } catch (error) {
         console.error('Products Error:', error);
+        await prisma.$disconnect();
         return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 });
     }
 }
 
 export async function POST(request) {
+    const prisma = new PrismaClient(); // 🔥 Moved inside function
     // Yahan aap Token verify karke Product create karne ka logic likh sakte hain
     try {
         const body = await request.json();
         const product = await prisma.product.create({ data: body });
+        
+        await prisma.$disconnect();
         return NextResponse.json({ message: 'Product created', product }, { status: 201 });
     } catch (error) {
+        await prisma.$disconnect();
         return NextResponse.json({ error: 'Failed to create product' }, { status: 500 });
     }
 }

@@ -5,8 +5,6 @@ import bcrypt from 'bcrypt';
 import { z } from 'zod';
 import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
-
 // Zod Validation Schema
 const registerSchema = z.object({
     firstName: z.string().min(2, "First name must be at least 2 characters"),
@@ -20,6 +18,9 @@ const registerSchema = z.object({
 });
 
 export async function POST(request) {
+    // 🔥 VERCEL BUILD ERROR FIX: PrismaClient ko function ke ANDAR likha hai
+    const prisma = new PrismaClient();
+
     try {
         const body = await request.json();
 
@@ -32,6 +33,7 @@ export async function POST(request) {
         });
 
         if (existingUser) {
+            await prisma.$disconnect();
             return NextResponse.json({ error: 'Email already registered' }, { status: 400 });
         }
 
@@ -51,12 +53,18 @@ export async function POST(request) {
 
         const { password, ...userWithoutPassword } = newUser;
 
+        // Disconnect before sending response
+        await prisma.$disconnect();
+
         return NextResponse.json({
             message: 'User registered successfully',
             user: userWithoutPassword
         }, { status: 201 });
 
     } catch (error) {
+        // Disconnect in case of error too
+        await prisma.$disconnect();
+
         if (error instanceof z.ZodError) {
             return NextResponse.json({ errors: error.errors }, { status: 400 });
         }

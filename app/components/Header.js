@@ -321,7 +321,7 @@ export default function Header() {
                   <div className="w-2/4 flex gap-6">
                     <Link href="/shop?category=bridal" onClick={() => setIsMegaMenuOpen(false)} className="relative w-1/2 aspect-[4/3] rounded-2xl overflow-hidden group bg-stone-100">
                       <img
-                        src="/image (1).jpg""
+                        src="/image (1).png""
                         alt="Bridal Collection"
                         className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-105"
                       />

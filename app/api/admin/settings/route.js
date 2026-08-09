@@ -1,9 +1,9 @@
+export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../utils/supabase';
 
 // GET: Jab frontend settings mange (Jaise Checkout page)
-export const dynamic = 'force-dynamic';
 
 export async function GET() {
     try {

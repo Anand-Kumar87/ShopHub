@@ -1,8 +1,9 @@
+export const dynamic = 'force-dynamic';
+
 import { NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
 import { supabase } from '../../../utils/supabase'; // <-- Relative path used here
 
-export const dynamic = 'force-dynamic';
 
 export async function POST(req) {
     try {

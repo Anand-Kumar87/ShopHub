@@ -1,10 +1,11 @@
+export const dynamic = 'force-dynamic';
+
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
 import { z } from 'zod';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
-export const dynamic = 'force-dynamic';
 
 // Zod Validation Schema
 const registerSchema = z.object({

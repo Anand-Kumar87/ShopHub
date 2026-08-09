@@ -19,7 +19,7 @@
     "hashing",
     "jwt"
   ],
-  "author": "Your Name",
+  "author": "ANAND KUMAR",
   "license": "MIT",
   "dependencies": {
     "@prisma/client": "^7.9.0",

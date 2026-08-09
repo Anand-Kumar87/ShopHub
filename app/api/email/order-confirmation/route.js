@@ -1,19 +1,21 @@
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs'; // 🔥 Added Node.js runtime for Vercel consistency
 
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 export async function POST(req) {
+    // 🔥 Moved inside function to prevent Vercel build-time execution errors
+    const resend = new Resend(process.env.RESEND_API_KEY);
+
     try {
         const order = await req.json();
 
         // 1. फाइनल टोटल को सेट करना
         const displayTotal = order.formatted_total || `₹${Number(order.total_amount).toFixed(2)}`;
 
-        // 🔥 2. स्मार्ट कनवर्ज़न लॉजिक (ताकि Subtotal, Tax आदि सही करेंसी में दिखें)
+        // 🔥 2. स्मार्ट कनवर्ज़न लॉजिक (ताकि Subtotal, Tax आदि सही करेंसी में दिखें)
         let rate = 1;
         let currencySymbol = order.currency || '₹';
 

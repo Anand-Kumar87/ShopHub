@@ -1,11 +1,10 @@
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import nodemailer from 'nodemailer';
 import crypto from 'crypto';
-
-const prisma = new PrismaClient();
 
 // Configure Nodemailer Transporter
 const transporter = nodemailer.createTransport({
@@ -17,6 +16,10 @@ const transporter = nodemailer.createTransport({
 });
 
 export async function POST(request) {
+    // 🔥 SOLUTION: PrismaClient ko function ke ANDAR likha hai
+    // Taaki Vercel isko build ke time par run karke error na de!
+    const prisma = new PrismaClient();
+
     try {
         const body = await request.json();
         const { email } = body;
@@ -33,6 +36,7 @@ export async function POST(request) {
         // Security best practice: Always return same message even if user not found
         // so attackers can't guess registered emails.
         if (!user) {
+            await prisma.$disconnect();
             return NextResponse.json({ message: 'If an account exists, a reset email has been sent.' }, { status: 200 });
         }
 
@@ -84,6 +88,9 @@ export async function POST(request) {
         };
 
         await transporter.sendMail(mailOptions);
+
+        // Disconnect connection gracefully
+        await prisma.$disconnect();
 
         return NextResponse.json({ message: 'If an account exists, a reset email has been sent.' }, { status: 200 });
 

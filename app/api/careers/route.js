@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
     const jobs = [
         { id: 1, title: "Senior Frontend Developer", department: "Engineering", location: "Remote", type: "Full-Time" },

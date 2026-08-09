@@ -6,7 +6,6 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secure-enterprise-key';
 
 const loginSchema = z.object({
@@ -15,6 +14,9 @@ const loginSchema = z.object({
 });
 
 export async function POST(request) {
+    // 🔥 VERCEL BUILD ERROR FIX: PrismaClient ko function ke ANDAR likha hai
+    const prisma = new PrismaClient();
+
     try {
         const body = await request.json();
         const validatedData = loginSchema.parse(body);
@@ -25,12 +27,14 @@ export async function POST(request) {
         });
 
         if (!user) {
+            await prisma.$disconnect();
             return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
         }
 
         // 2. Verify Password
         const validPassword = await bcrypt.compare(validatedData.password, user.password);
         if (!validPassword) {
+            await prisma.$disconnect();
             return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
         }
 
@@ -43,6 +47,9 @@ export async function POST(request) {
 
         const { password, ...userWithoutPassword } = user;
 
+        // Disconnect before sending response
+        await prisma.$disconnect();
+
         // 4. Return success with token
         return NextResponse.json({
             message: 'Login successful',
@@ -51,6 +58,9 @@ export async function POST(request) {
         }, { status: 200 });
 
     } catch (error) {
+        // Disconnect in case of error too
+        await prisma.$disconnect();
+        
         if (error instanceof z.ZodError) {
             return NextResponse.json({ errors: error.errors }, { status: 400 });
         }

@@ -1,0 +1,182 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Premium Stone Minimalist Palette */
+  --primary-color: #1c1917;
+  /* stone-900 */
+  --secondary-color: #fafaf9;
+  /* stone-50 */
+  --accent-color: #a8a29e;
+  /* stone-400 */
+  --background-color: #ffffff;
+  --text-color: #1c1917;
+  /* stone-900 */
+  --light-gray: #f5f5f4;
+  /* stone-100 */
+  --medium-gray: #e7e5e4;
+  /* stone-200 */
+  --dark-gray: #78716c;
+  /* stone-500 */
+}
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    /* Font smoothing for crisp, premium typography */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    color: var(--text-color);
+    background-color: var(--background-color);
+  }
+
+  /* High-end text selection color */
+  ::selection {
+    background-color: var(--primary-color);
+    color: #ffffff;
+  }
+}
+
+@layer components {
+
+  /* Editorial Buttons */
+  .btn-primary {
+    @apply bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold tracking-widest uppercase py-3.5 px-8 rounded-full transition-colors duration-300 shadow-lg shadow-stone-900/10 flex items-center justify-center;
+  }
+
+  .btn-secondary {
+    @apply bg-white hover:bg-stone-50 text-stone-900 text-xs font-bold tracking-widest uppercase py-3.5 px-8 rounded-full border border-stone-200 transition-colors duration-300 flex items-center justify-center;
+  }
+
+  /* Luxury Cards */
+  .card {
+    @apply bg-white rounded-2xl border border-stone-100 overflow-hidden transition-all duration-500 hover:shadow-2xl hover:shadow-stone-200/50 hover:-translate-y-1;
+  }
+
+  .container-custom {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Minimalist Form Inputs */
+  .input-field {
+    @apply w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 focus:bg-white transition-colors text-sm text-stone-900 placeholder-stone-400;
+  }
+
+  /* Editorial Section Titles */
+  .section-title {
+    @apply text-3xl md:text-4xl font-light text-stone-900 tracking-tight mb-8;
+  }
+}
+
+@layer utilities {
+
+  /* Clean scrollbars for Carousels & Sidebars */
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+    /* Chrome, Safari and Opera */
+  }
+
+  /* Core Animations used in our components */
+  .animate-fade-in {
+    animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(15px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Form Validation Shake Animation */
+  @keyframes shake {
+
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+
+    20% {
+      transform: translateX(-5px);
+    }
+
+    40% {
+      transform: translateX(5px);
+    }
+
+    60% {
+      transform: translateX(-5px);
+    }
+
+    80% {
+      transform: translateX(5px);
+    }
+  }
+}
+
+/* 🔥 LUXURY TEXT SELECTION */
+::selection {
+  background-color: #1c1917;
+  /* stone-900 */
+  color: #ffffff;
+}
+
+::-moz-selection {
+  background-color: #1c1917;
+  color: #ffffff;
+}
+
+/* 🔥 CUSTOM PREMIUM SCROLLBAR */
+::-webkit-scrollbar {
+  width: 6px;
+  /* बहुत ही स्लिम स्क्रॉलबार */
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #fafaf9;
+  /* stone-50 */
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d6d3d1;
+  /* stone-300 */
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a29e;
+  /* stone-400 */
+}
+
+/* Hide scrollbar for clean horizontal scrolling areas */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

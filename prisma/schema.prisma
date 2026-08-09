@@ -1,0 +1,60 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+model User {
+  id                 Int       @id @default(autoincrement())
+  name               String    @db.VarChar(100)
+  email              String    @unique @db.VarChar(100)
+  password           String    @db.VarChar(255)
+  role               Role      @default(CUSTOMER)
+  resetToken         String?   @db.VarChar(255)
+  resetTokenExpiry   DateTime?
+  orders             Order[]
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  @@index([email], name: "idx_users_email")
+  @@map("users")
+}
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  name        String
+  sku         String?  @unique
+  category    String
+  price       Float
+  stock       Int      @default(0)
+  status      String   @default("active")
+  image       String
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("products")
+}
+
+model Order {
+  id              String   @id @default(uuid())
+  orderNumber     String   @unique
+  totalAmount     Float
+  status          String   @default("Processing")
+  shippingAddress String   @db.Text
+  paymentMethod   String
+  userId          Int
+  user            User     @relation(fields: [userId], references: [id])
+  createdAt       DateTime @default(now())
+  
+  @@map("orders")
+}

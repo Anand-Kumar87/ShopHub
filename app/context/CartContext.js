@@ -28,7 +28,12 @@ export function CartProvider({ children }) {
   // Save cart to localStorage
   useEffect(() => {
     if (!isLoading) {
-      localStorage.setItem('shophub_cart', JSON.stringify(cartItems));
+      try {
+        // 🔥 FIX: Added try-catch to prevent "QuotaExceededError" from crashing the site
+        localStorage.setItem('shophub_cart', JSON.stringify(cartItems));
+      } catch (error) {
+        console.error('Local Storage is full! Could not save to cart.', error);
+      }
     }
   }, [cartItems, isLoading]);
 
@@ -48,7 +53,25 @@ export function CartProvider({ children }) {
         };
         return updatedItems;
       } else {
-        return [...prevItems, { ...product, price: actualPrice, quantity }];
+        // 🔥 OPTIMIZATION: Only save essential data to prevent 5MB localStorage limit
+        const optimizedProduct = {
+          id: product.id,
+          name: product.name,
+          price: actualPrice,
+          originalPrice: product.price,
+          salePrice: product.salePrice,
+          onSale: product.onSale,
+          slug: product.slug,
+          size: product.size,
+          color: product.color,
+          // Extract only the first image if it's an array to save huge amounts of space
+          images: Array.isArray(product.images) && product.images.length > 0 ? [product.images[0]] : product.images,
+          image: product.image,
+          category: product.category,
+          quantity: quantity
+        };
+
+        return [...prevItems, optimizedProduct];
       }
     });
 

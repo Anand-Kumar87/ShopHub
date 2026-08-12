@@ -20,13 +20,14 @@ const safePrice = (val) => {
     return isNaN(num) ? 0 : num;
 };
 
+// 🔥 FIX: Added hour12: true to ensure 12-hour AM/PM format
 const safeDate = (dateString) => {
     if (!dateString) return 'Pending / Not Set';
     const d = new Date(dateString);
-    return isNaN(d.getTime()) ? 'Pending / Not Set' : d.toLocaleString('en-GB', {
+    return isNaN(d.getTime()) ? 'Pending / Not Set' : d.toLocaleString('en-IN', {
         day: 'numeric', month: 'short', year: 'numeric',
-        hour: '2-digit', minute: '2-digit'
-    });
+        hour: '2-digit', minute: '2-digit', hour12: true
+    }).toUpperCase(); // Converts 'pm' to 'PM'
 };
 
 // 🔥 FIX: Flipkart Style Live Delivery Estimator Logic
@@ -390,7 +391,41 @@ export default function AccountPage() {
 
     return (
         <main className="animate-fade-in bg-white min-h-screen pb-24">
-            <div className="bg-stone-50 pt-24 pb-16 border-b border-stone-200 px-4 mb-12">
+            {/* 🔥 FIX: Added Print Styles here so it hides background and shows only invoice taking full A4 */}
+            <style>{`
+                @media print {
+                    body * {
+                        visibility: hidden;
+                    }
+                    .print-container, .print-container * {
+                        visibility: visible;
+                    }
+                    .print-container {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                        max-width: 100% !important;
+                        margin: 0;
+                        padding: 20px;
+                        background: white;
+                        box-shadow: none !important;
+                        border: none !important;
+                        border-radius: 0 !important;
+                        overflow: visible !important;
+                        max-height: none !important;
+                    }
+                    .no-print {
+                        display: none !important;
+                    }
+                    .print-scroll-fix {
+                        overflow: visible !important;
+                        max-height: none !important;
+                    }
+                }
+            `}</style>
+
+            <div className="bg-stone-50 pt-24 pb-16 border-b border-stone-200 px-4 mb-12 no-print">
                 <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
                     <div className="text-center md:text-left">
                         <span className="text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2 block">
@@ -406,7 +441,7 @@ export default function AccountPage() {
                 </div>
             </div>
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 no-print">
                 <div className="flex flex-col lg:flex-row gap-12">
                     <div className="lg:w-1/4">
                         <div className="sticky top-24 space-y-1">
@@ -697,15 +732,17 @@ export default function AccountPage() {
 
             {/* --- MODALS --- */}
             {selectedOrder && (
-                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4 sm:p-6 animate-fade-in">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col border border-stone-100">
+                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4 sm:p-6 animate-fade-in no-print">
+                    {/* 🔥 FIX: Added print-container class to show ONLY this element while printing */}
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col border border-stone-100 print-container">
 
                         <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
                             <div>
                                 <p className="text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-1">Receipt</p>
                                 <h3 className="text-2xl font-light text-stone-900">{formatDisplayId(selectedOrder)}</h3>
                             </div>
-                            <div className="flex items-center gap-3">
+                            {/* 🔥 FIX: no-print class hides buttons during print */}
+                            <div className="flex items-center gap-3 no-print">
                                 <button onClick={() => window.print()} className="w-10 h-10 rounded-full bg-white border border-stone-200 flex items-center justify-center text-stone-500 hover:text-stone-900 transition-colors shadow-sm">
                                     <FiPrinter size={16} />
                                 </button>
@@ -715,14 +752,14 @@ export default function AccountPage() {
                             </div>
                         </div>
 
-                        <div className="p-8 overflow-y-auto hide-scrollbar space-y-10">
+                        {/* 🔥 FIX: print-scroll-fix removes scrollbars for full-page print */}
+                        <div className="p-8 overflow-y-auto hide-scrollbar space-y-10 print-scroll-fix">
                             <div className="flex flex-wrap items-center justify-between gap-6">
                                 <div>
                                     <p className="text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-1">Date</p>
                                     <p className="text-sm font-medium text-stone-900">{safeDate(selectedOrder.created_at || selectedOrder.date)}</p>
                                 </div>
 
-                                {/* 🔥 FIX: Added Payment Method Display */}
                                 <div>
                                     <p className="text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-1">Payment Method</p>
                                     <p className="text-sm font-medium text-stone-900 flex items-center gap-2">
@@ -740,7 +777,7 @@ export default function AccountPage() {
                                     </span>
                                 </div>
                                 {selectedOrder.status !== 'Cancelled' && (
-                                    <button onClick={() => { setSelectedOrder(null); setTrackingOrder(selectedOrder); }} className="bg-stone-900 text-white hover:bg-stone-800 px-6 py-2.5 rounded-full text-xs font-bold tracking-widest uppercase transition-colors flex items-center gap-2 shadow-md">
+                                    <button onClick={() => { setSelectedOrder(null); setTrackingOrder(selectedOrder); }} className="bg-stone-900 text-white hover:bg-stone-800 px-6 py-2.5 rounded-full text-xs font-bold tracking-widest uppercase transition-colors flex items-center gap-2 shadow-md no-print">
                                         <FiTruck size={14} /> Track Order
                                     </button>
                                 )}
@@ -790,7 +827,7 @@ export default function AccountPage() {
                             </div>
 
                             {selectedOrder.status === 'Processing' && (
-                                <div className="flex justify-end pt-6">
+                                <div className="flex justify-end pt-6 no-print">
                                     <button onClick={() => cancelOrder(selectedOrder.id)} className="text-red-500 hover:text-red-700 text-xs font-bold tracking-widest uppercase border-b border-transparent hover:border-red-700 pb-0.5 transition-colors">
                                         Request Cancellation
                                     </button>
@@ -802,7 +839,7 @@ export default function AccountPage() {
             )}
 
             {trackingOrder && (
-                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
+                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in no-print">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-stone-100">
                         <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
                             <h3 className="text-lg font-light text-stone-900">Track Journey</h3>
@@ -820,7 +857,6 @@ export default function AccountPage() {
                                 </div>
                                 <div className="text-right bg-green-50 px-4 py-2 rounded-xl border border-green-100">
                                     <p className="text-[10px] font-bold tracking-widest uppercase text-green-600 mb-0.5 flex items-center gap-1"><FiClock size={10} /> Live Estimate</p>
-                                    {/* 🔥 FIX: Dynamic Delivery Date Calculator */}
                                     <span className="text-green-800 font-medium text-xs">{getExpectedDelivery(trackingOrder.created_at || trackingOrder.date, trackingOrder.status)}</span>
                                 </div>
                             </div>
@@ -865,7 +901,7 @@ export default function AccountPage() {
             )}
 
             {paymentModalOpen && (
-                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
+                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in no-print">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-stone-100">
                         <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
                             <h3 className="text-lg font-light text-stone-900">{paymentForm.id ? 'Edit' : 'Add'} Details</h3>

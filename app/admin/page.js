@@ -200,15 +200,16 @@ export default function AdminDashboard() {
         };
     }, []);
 
+    // 🔥 FIX: Removed Exchange Rate conversion here so it stays pure INR in admin panel
     useEffect(() => {
         setSettingsForm({
             ...settings,
-            freeShippingAmount: Number((settings.freeShippingAmount * exchangeRate).toFixed(2)),
-            shippingIndia: Number((settings.shippingIndia * exchangeRate).toFixed(2)),
-            shippingTier1: Number((settings.shippingTier1 * exchangeRate).toFixed(2)),
-            shippingRow: Number((settings.shippingRow * exchangeRate).toFixed(2)),
+            freeShippingAmount: Number((settings.freeShippingAmount || 0).toFixed(2)),
+            shippingIndia: Number((settings.shippingIndia || 0).toFixed(2)),
+            shippingTier1: Number((settings.shippingTier1 || 0).toFixed(2)),
+            shippingRow: Number((settings.shippingRow || 0).toFixed(2)),
         });
-    }, [settings, exchangeRate]);
+    }, [settings]);
 
     if (!mounted) return null;
 
@@ -264,8 +265,9 @@ export default function AdminDashboard() {
             setSelectedProduct(product);
             setProductForm({
                 ...product,
-                price: Number((product.price * exchangeRate).toFixed(2)),
-                salePrice: Number(((product.salePrice || 0) * exchangeRate).toFixed(2)),
+                // 🔥 FIX: Removed Exchange Rate conversion here so it stays pure INR in admin panel
+                price: Number((product.price || 0).toFixed(2)),
+                salePrice: Number(((product.salePrice || 0)).toFixed(2)),
                 images: product.images || (product.image ? [product.image] : []),
                 colors: product.colors ? product.colors.join(', ') : '',
                 sizes: product.sizes ? product.sizes.join(', ') : ''
@@ -279,6 +281,7 @@ export default function AdminDashboard() {
         }
         setIsProductModalOpen(true);
     };
+
     const handleProductSubmit = async (e) => {
         e.preventDefault();
 
@@ -294,12 +297,12 @@ export default function AdminDashboard() {
         // 2. फाइनल डेटा तैयार करना
         const finalProduct = {
             ...productForm,
-            price: Number(productForm.price) / exchangeRate,
-            salePrice: Number(productForm.salePrice) / exchangeRate,
+            // 🔥 FIX: Removed Exchange Rate conversion here so it stays pure INR in admin panel
+            price: Number(productForm.price),
+            salePrice: Number(productForm.salePrice),
             colors: colorsArray,
             sizes: sizesArray,
-            // 'onSale' के हिसाब से oldPrice और tags को आटोमेटिक एडजस्ट करना
-            oldPrice: productForm.onSale ? (Number(productForm.price) / exchangeRate) : null,
+            oldPrice: productForm.onSale ? Number(productForm.price) : null,
             tags: productForm.onSale ? ['Sale'] : ['New']
         };
 
@@ -446,7 +449,8 @@ export default function AdminDashboard() {
             setSelectedCoupon(coupon);
             setCouponForm({
                 ...coupon,
-                discount: coupon.type === 'fixed' ? Number((coupon.discount * exchangeRate).toFixed(2)) : coupon.discount
+                // 🔥 FIX: Removed Exchange Rate conversion here so it stays pure INR in admin panel
+                discount: coupon.discount
             });
         } else {
             setSelectedCoupon(null);
@@ -461,7 +465,8 @@ export default function AdminDashboard() {
         const finalCoupon = {
             ...couponForm,
             code: formattedCode,
-            discount: couponForm.type === 'fixed' ? (couponForm.discount / exchangeRate) : couponForm.discount
+            // 🔥 FIX: Removed Exchange Rate conversion here so it stays pure INR in admin panel
+            discount: couponForm.discount
         };
 
         let newCoupons = [];
@@ -491,6 +496,24 @@ export default function AdminDashboard() {
         setIsCouponModalOpen(false);
     };
 
+    // 🔥 FIX: Missing deleteCoupon function added here!
+    const deleteCoupon = async (id) => {
+        if (window.confirm("Delete this promo code?")) {
+            try {
+                const { error } = await supabase.from('coupons').delete().eq('id', id);
+                if (error) throw error;
+                
+                const newCoupons = coupons.filter(c => c.id !== id);
+                setCoupons(newCoupons);
+                localStorage.setItem('shophub_admin_coupons', JSON.stringify(newCoupons));
+                toast.success("Promo code deleted successfully!");
+            } catch (error) {
+                console.error("Delete Error:", error);
+                toast.error("Failed to delete promo code.");
+            }
+        }
+    };
+
     const openCustomerModalForEdit = (cust = null) => {
         if (cust) {
             setCustomerForm({
@@ -499,7 +522,8 @@ export default function AdminDashboard() {
                 email: cust.email || '',
                 role: cust.role || 'customer',
                 orders: cust.orders || 0,
-                spent: cust.spent ? Number((cust.spent * exchangeRate).toFixed(2)) : 0,
+                // 🔥 FIX: Removed Exchange Rate conversion here so it stays pure INR in admin panel
+                spent: cust.spent ? Number((cust.spent).toFixed(2)) : 0,
                 isProfile: cust.isProfile || false
             });
         } else {
@@ -510,7 +534,8 @@ export default function AdminDashboard() {
 
     const handleNewCustomerSubmit = async (e) => {
         e.preventDefault();
-        const baseSpentAmount = Number(customerForm.spent) / exchangeRate;
+        // 🔥 FIX: Removed Exchange Rate conversion here so it stays pure INR in admin panel
+        const baseSpentAmount = Number(customerForm.spent);
         const nameParts = customerForm.name.split(' ');
         const firstName = nameParts[0] || '';
         const lastName = nameParts.slice(1).join(' ') || '';
@@ -627,12 +652,13 @@ export default function AdminDashboard() {
 
     const handleSettingsSubmit = async (e) => {
         e.preventDefault();
+        // 🔥 FIX: Removed Exchange Rate conversion here so it stays pure INR in admin panel
         const finalSettings = {
             ...settingsForm,
-            freeShippingAmount: settingsForm.freeShippingAmount / exchangeRate,
-            shippingIndia: settingsForm.shippingIndia / exchangeRate,
-            shippingTier1: settingsForm.shippingTier1 / exchangeRate,
-            shippingRow: settingsForm.shippingRow / exchangeRate,
+            freeShippingAmount: Number(settingsForm.freeShippingAmount),
+            shippingIndia: Number(settingsForm.shippingIndia),
+            shippingTier1: Number(settingsForm.shippingTier1),
+            shippingRow: Number(settingsForm.shippingRow),
         };
         setSettings(finalSettings);
         try {
@@ -1323,12 +1349,12 @@ export default function AdminDashboard() {
                                                 <input required type="number" step="0.01" value={settingsForm.taxRate || 0} onChange={e => setSettingsForm({ ...settingsForm, taxRate: Number(e.target.value) })} className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm font-mono" placeholder="e.g. 18 for 18%" />
                                             </div>
                                             <div>
-                                                <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Free Shipping Threshold ({currency})</label>
+                                                <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Free Shipping Threshold (INR)</label>
                                                 <input required type="number" value={settingsForm.freeShippingAmount || 0} onChange={e => setSettingsForm({ ...settingsForm, freeShippingAmount: Number(e.target.value) })} className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm font-mono" />
                                             </div>
                                         </div>
 
-                                        <h4 className="text-[10px] font-bold tracking-widest uppercase text-stone-400 mt-8 mb-4">Shipping Zones (Base Rates in {currency})</h4>
+                                        <h4 className="text-[10px] font-bold tracking-widest uppercase text-stone-400 mt-8 mb-4">Shipping Zones (Base Rates in INR)</h4>
                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
                                             <div>
                                                 <label className="block text-xs font-medium text-stone-600 mb-2">India</label>
@@ -1628,7 +1654,7 @@ export default function AdminDashboard() {
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Total Spent ({currency})</label>
+                                <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Total Spent (INR)</label>
                                 <input
                                     type="number" value={customerForm.spent}
                                     onChange={e => setCustomerForm({ ...customerForm, spent: Number(e.target.value) })}
@@ -1737,7 +1763,7 @@ export default function AdminDashboard() {
                                     <h4 className="text-[10px] font-bold tracking-widest uppercase text-stone-900 border-b border-stone-200 pb-2 mt-8">Pricing & Inventory</h4>
                                     <div className="grid grid-cols-2 gap-6">
                                         <div>
-                                            <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Base Price ({currency}) *</label>
+                                            <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Base Price (INR) *</label>
                                             <input
                                                 required
                                                 type="number"
@@ -1774,7 +1800,7 @@ export default function AdminDashboard() {
                                             </div>
                                             {productForm.onSale && (
                                                 <div className="animate-fade-in mt-2">
-                                                    <label className="block text-[9px] font-bold tracking-widest uppercase text-red-50 mb-1">Sale Price ({currency})</label>
+                                                    <label className="block text-[9px] font-bold tracking-widest uppercase text-red-50 mb-1">Sale Price (INR)</label>
                                                     <input
                                                         type="number"
                                                         step="0.01"
@@ -2024,7 +2050,7 @@ export default function AdminDashboard() {
                                         className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm appearance-none"
                                     >
                                         <option value="percent">Percentage (%)</option>
-                                        <option value="fixed">Fixed Amount ({currency})</option>
+                                        <option value="fixed">Fixed Amount (INR)</option>
                                     </select>
                                 </div>
                                 <div>

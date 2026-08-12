@@ -8,11 +8,17 @@ import toast from 'react-hot-toast';
 // 1. Contexts Import Karein
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
+// 🔥 Global Currency Context Import kiya
+import { useGlobalCurrency } from '../../context/CurrencyContext';
 
-export default function ProductCard({ product }) {
+// 🔥 openQuickView prop add kiya taki Shop page se Modal open ho sake
+export default function ProductCard({ product, openQuickView }) {
   // 2. Global State Hooks
   const { addToCart } = useCart();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
+  
+  // 🔥 Currency hook setup
+  const { convertPrice } = useGlobalCurrency() || { convertPrice: (v) => `$${Number(v).toFixed(2)}` };
 
   const {
     id,
@@ -64,13 +70,19 @@ export default function ProductCard({ product }) {
     }
   };
 
+  // 6. Quick View Handler
   const handleQuickView = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    toast('Quick view coming soon...', { icon: '👀' });
+    if (openQuickView) {
+        openQuickView(product); // Shop page ka modal function call karega
+    } else {
+        toast('Quick view coming soon...', { icon: '👀' });
+    }
   };
 
   return (
+    // 🔥 Pura card Link hai, ispe click se seedha Product Details page khulega
     <Link href={`/product/${id}`} className="group flex flex-col relative cursor-pointer block h-full">
 
       {/* Product Image Section (Premium 3:4 Aspect Ratio) */}
@@ -97,7 +109,7 @@ export default function ProductCard({ product }) {
           )}
         </div>
 
-        {/* Top Right Actions (Wishlist) */}
+        {/* Top Right Actions (Wishlist & Quick View) */}
         <div className="absolute top-3 right-3 z-10 flex flex-col gap-2">
           <button
             onClick={handleWishlist}
@@ -109,9 +121,18 @@ export default function ProductCard({ product }) {
           >
             <FiHeart size={16} className={isWishlisted ? 'fill-current' : ''} />
           </button>
+          
+          {/* 🔥 Desktop Quick View Button */}
+          <button
+            onClick={handleQuickView}
+            className="p-2.5 bg-white/90 backdrop-blur-sm text-stone-400 hover:text-stone-900 rounded-full transition-all duration-300 shadow-sm lg:opacity-0 lg:group-hover:opacity-100 hidden lg:flex items-center justify-center"
+            aria-label="Quick View"
+          >
+            <FiEye size={16} />
+          </button>
         </div>
 
-        {/* Quick Add Overlay (Glassmorphism Slide-up) */}
+        {/* Quick Add Overlay (Glassmorphism Slide-up - Desktop) */}
         <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full lg:group-hover:translate-y-0 transition-transform duration-300 ease-out hidden lg:block z-20">
           <button
             onClick={handleAddToCart}
@@ -122,7 +143,16 @@ export default function ProductCard({ product }) {
         </div>
 
         {/* Mobile Quick Actions (Visible only on small screens) */}
-        <div className="absolute bottom-3 right-3 lg:hidden z-20">
+        <div className="absolute bottom-3 right-3 lg:hidden z-20 flex flex-col gap-2">
+          {/* 🔥 Mobile Quick View Button */}
+          <button
+            onClick={handleQuickView}
+            className="w-10 h-10 bg-white/90 backdrop-blur-md text-stone-900 flex items-center justify-center rounded-full shadow-md hover:bg-stone-900 hover:text-white transition-colors"
+            aria-label="Quick view"
+          >
+            <FiEye size={18} />
+          </button>
+          
           <button
             onClick={handleAddToCart}
             className="w-10 h-10 bg-white/90 backdrop-blur-md text-stone-900 flex items-center justify-center rounded-full shadow-md hover:bg-stone-900 hover:text-white transition-colors"
@@ -148,12 +178,13 @@ export default function ProductCard({ product }) {
         {/* Price & Rating Row */}
         <div className="flex items-center justify-between mt-auto">
           <div className="flex items-center gap-2">
+            {/* 🔥 Automatic Currency Convertor */}
             <span className="text-sm font-bold text-stone-900">
-              ${discountedPrice.toFixed(2)}
+              {convertPrice(discountedPrice)}
             </span>
             {discount > 0 && (
               <span className="text-xs font-medium text-stone-400 line-through">
-                ${price.toFixed(2)}
+                {convertPrice(price)}
               </span>
             )}
           </div>

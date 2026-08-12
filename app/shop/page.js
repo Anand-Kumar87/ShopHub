@@ -6,7 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import {
     FiHeart, FiX, FiStar, FiFilter, FiMinus, FiPlus,
-    FiGrid, FiList, FiMessageSquare
+    FiGrid, FiList, FiMessageSquare, FiEye // 🔥 Added FiEye for Quick View
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
@@ -169,6 +169,7 @@ function ShopContent() {
     };
 
     const handleWishlist = (e, product) => {
+        e.preventDefault(); // 🔥 Added to prevent link click
         e.stopPropagation();
         const isAlreadyWishlisted = wishlistItems.some(item => item.id === product.id);
 
@@ -390,10 +391,11 @@ function ShopContent() {
                                     const isWishlisted = wishlistItems.some(item => item.id === product.id);
 
                                     return (
-                                        <div
+                                        // 🔥 NEW: Changed to a Link so clicking the card opens product details
+                                        <Link
                                             key={product.id}
+                                            href={`/product/${product.id}`}
                                             className={`group cursor-pointer flex ${viewMode === 'list' ? 'flex-row gap-8 items-center border-b border-stone-100 pb-8' : 'flex-col relative'}`}
-                                            onClick={() => { setSelectedProduct(product); setModalQuantity(1); }}
                                         >
                                             {/* Image Container with Hover Flip Effect */}
                                             <div className={`relative bg-stone-100 rounded-xl overflow-hidden ${viewMode === 'list' ? 'w-1/3 aspect-square' : 'aspect-[3/4] mb-5'}`}>
@@ -424,14 +426,29 @@ function ShopContent() {
                                                     ))}
                                                 </div>
 
-                                                {/* Wishlist Button */}
-                                                <button
-                                                    onClick={(e) => handleWishlist(e, product)}
-                                                    className={`absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-sm rounded-full transition-all ${isWishlisted ? 'text-red-500 opacity-100' : 'text-stone-400 hover:text-red-500'
-                                                        } ${viewMode === 'grid' && !isWishlisted ? 'opacity-0 group-hover:opacity-100' : ''}`}
-                                                >
-                                                    <FiHeart size={16} className={isWishlisted ? 'fill-current' : ''} />
-                                                </button>
+                                                {/* 🔥 NEW: Stacked Wishlist and Quick View Buttons */}
+                                                <div className="absolute top-3 right-3 flex flex-col gap-2 z-10">
+                                                    <button
+                                                        onClick={(e) => handleWishlist(e, product)}
+                                                        className={`p-2 bg-white/90 backdrop-blur-sm rounded-full transition-all ${isWishlisted ? 'text-red-500 opacity-100' : 'text-stone-400 hover:text-red-500'
+                                                            } ${viewMode === 'grid' && !isWishlisted ? 'lg:opacity-0 lg:group-hover:opacity-100' : ''}`}
+                                                    >
+                                                        <FiHeart size={16} className={isWishlisted ? 'fill-current' : ''} />
+                                                    </button>
+
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            setSelectedProduct(product);
+                                                            setModalQuantity(1);
+                                                        }}
+                                                        className={`p-2 bg-white/90 backdrop-blur-sm text-stone-400 hover:text-stone-900 rounded-full transition-all shadow-sm ${viewMode === 'grid' ? 'lg:opacity-0 lg:group-hover:opacity-100' : ''}`}
+                                                        aria-label="Quick View"
+                                                    >
+                                                        <FiEye size={16} />
+                                                    </button>
+                                                </div>
                                             </div>
 
                                             {/* Product Info */}
@@ -465,13 +482,14 @@ function ShopContent() {
                                                 {/* List View Quick Add */}
                                                 {viewMode === 'list' && (
                                                     <MagneticButton>
-                                                        <button onClick={(e) => { e.stopPropagation(); handleAddToCart(product); }} className="px-8 py-3 bg-stone-900 text-white rounded-full text-sm font-bold tracking-widest uppercase hover:bg-stone-800 transition-colors w-max">
+                                                        {/* 🔥 Added preventDefault */}
+                                                        <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAddToCart(product); }} className="px-8 py-3 bg-stone-900 text-white rounded-full text-sm font-bold tracking-widest uppercase hover:bg-stone-800 transition-colors w-max">
                                                             Quick Add
                                                         </button>
                                                     </MagneticButton>
                                                 )}
                                             </div>
-                                        </div>
+                                        </Link>
                                     )
                                 })}
                             </div>

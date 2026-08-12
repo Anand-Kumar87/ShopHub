@@ -43,7 +43,7 @@ export default function CheckoutPage() {
     // Form States
     const [formData, setFormData] = useState({
         firstName: '', lastName: '', email: '', phone: '',
-        address: '', city: '', postalCode: '', state: '', country: '',
+        address: '', city: '', postalCode: '', state: '', country: 'IN', // Default to India
         // Payment Specific Data
         cardNumber: '', expiryDate: '', cvv: '', cardName: '',
         upiId: '',
@@ -196,15 +196,28 @@ export default function CheckoutPage() {
     const effectiveShippingTier1 = (dbSettings?.shippingTier1 ?? shippingTier1) * exchangeRate;
     const effectiveShippingRow = (dbSettings?.shippingRow ?? shippingRow) * exchangeRate;
 
+    // 🔥 SMART SHIPPING LOGIC BASED ON COUNTRY
     let SHIPPING_COST = 0;
-    if (rawSubtotal >= effectiveFreeShipping) {
-        SHIPPING_COST = 0;
+    const tier1Countries = ['US', 'GB', 'CA', 'AU', 'DE', 'FR', 'IT', 'ES', 'NL']; // Add major EU countries here
+
+    if (formData.country === 'IN') {
+        // Free shipping ONLY applies to India
+        if (rawSubtotal >= effectiveFreeShipping) {
+            SHIPPING_COST = 0;
+        } else {
+            SHIPPING_COST = effectiveShippingIN;
+        }
+    } else if (tier1Countries.includes(formData.country)) {
+        // Tier 1 rates (No free shipping)
+        SHIPPING_COST = effectiveShippingTier1;
+    } else if (formData.country) {
+        // Rest of the World (No free shipping)
+        SHIPPING_COST = effectiveShippingRow;
     } else {
-        if (formData.country === 'IN') SHIPPING_COST = effectiveShippingIN;
-        else if (['US', 'UK', 'GB', 'CA', 'EU'].includes(formData.country)) SHIPPING_COST = effectiveShippingTier1;
-        else if (formData.country) SHIPPING_COST = effectiveShippingRow;
-        else SHIPPING_COST = effectiveShippingTier1;
+        // Fallback if no country selected
+        SHIPPING_COST = effectiveShippingIN;
     }
+
 
     let discountAmount = 0;
     if (appliedCoupon) {
@@ -484,7 +497,10 @@ export default function CheckoutPage() {
                 {!cartItems || cartItems.length === 0 ? (
                     <p className="text-stone-500 text-center py-8 text-sm">Your bag is empty</p>
                 ) : (
-                    cartItems.map((item, idx) => (
+                    cartItems.map((item, idx) => {
+                        // Ensure price is a number to prevent NaN calculation errors
+                        const itemPrice = typeof item.price === 'string' ? parseFloat(item.price) : item.price;
+                        return (
                         <div key={idx} className="flex gap-4 group">
                             <div className="w-16 sm:w-20 aspect-[3/4] bg-white rounded-lg overflow-hidden flex-shrink-0 border border-stone-100">
                                 {item.image || item.images?.[0] ? (
@@ -500,10 +516,10 @@ export default function CheckoutPage() {
                             <div className="flex-1 flex flex-col justify-center">
                                 <h4 className="text-sm font-bold text-stone-900 line-clamp-1 mb-1">{item.name}</h4>
                                 <p className="text-xs text-stone-500 uppercase tracking-widest mb-1">Qty: {item.quantity}</p>
-                                <p className="text-sm font-bold text-stone-900">{convertPrice(item.price * item.quantity)}</p>
+                                <p className="text-sm font-bold text-stone-900">{convertPrice(itemPrice * item.quantity)}</p>
                             </div>
                         </div>
-                    ))
+                    )})
                 )}
             </div>
 
@@ -550,7 +566,8 @@ export default function CheckoutPage() {
                     </div>
                 )}
                 <div className="flex justify-between text-stone-500">
-                    <span>Shipping {rawSubtotal >= effectiveFreeShipping ? '(Free)' : ''}</span>
+                    {/* Show Free tag only if India and meets threshold */}
+                    <span>Shipping {formData.country === 'IN' && rawSubtotal >= effectiveFreeShipping ? '(Free)' : ''}</span>
                     <span className="font-medium text-stone-900">{SHIPPING_COST === 0 ? 'Free' : convertPrice(SHIPPING_COST)}</span>
                 </div>
                 <div className="flex justify-between text-stone-500">
@@ -695,14 +712,32 @@ export default function CheckoutPage() {
                                 </div>
                                 <div>
                                     <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Country *</label>
+                                    {/* 🔥 NEW: Comprehensive Country List */}
                                     <select required name="country" value={formData.country} onChange={handleInputChange} className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 focus:bg-white transition-colors text-sm appearance-none font-bold">
                                         <option value="">Select a country</option>
+                                        <option value="IN">India</option>
+                                        <option disabled>──────────</option>
                                         <option value="US">United States</option>
                                         <option value="GB">United Kingdom</option>
                                         <option value="CA">Canada</option>
                                         <option value="AU">Australia</option>
-                                        <option value="IN">India</option>
-                                        <option value="EU">Europe (General)</option>
+                                        <option disabled>──────────</option>
+                                        <option value="FR">France</option>
+                                        <option value="DE">Germany</option>
+                                        <option value="IT">Italy</option>
+                                        <option value="ES">Spain</option>
+                                        <option value="NL">Netherlands</option>
+                                        <option value="SE">Sweden</option>
+                                        <option value="CH">Switzerland</option>
+                                        <option disabled>──────────</option>
+                                        <option value="AE">United Arab Emirates</option>
+                                        <option value="SG">Singapore</option>
+                                        <option value="JP">Japan</option>
+                                        <option value="NZ">New Zealand</option>
+                                        <option value="ZA">New Zealand</option>
+                                        <option value="MX">South Africa</option>
+                                        <option value="BR">Brazil</option>
+                                        <option value="ROW">Rest of the World</option>
                                     </select>
                                 </div>
                             </div>

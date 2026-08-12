@@ -23,8 +23,8 @@ export default function ProductDetails() {
 
     const { addToCart } = useCart();
 
-    // Fetching freeShippingThreshold from database via context
-    const { convertPrice, freeShippingThreshold } = useGlobalCurrency() || { convertPrice: (v) => `$${Number(v).toFixed(2)}`, freeShippingThreshold: 0 };
+    // Fetching freeShippingThreshold & convertPrice from database via context
+    const { convertPrice, freeShippingThreshold } = useGlobalCurrency() || { convertPrice: (v) => `₹${Number(v).toFixed(2)}`, freeShippingThreshold: 4999 };
     const { wishlistItems, addToWishlist, removeFromWishlist, isInWishlist } = useWishlist() || { isInWishlist: () => false };
 
     // Component States
@@ -170,7 +170,6 @@ export default function ProductDetails() {
 
     return (
         <main className="bg-stone-50 min-h-screen pb-24 pt-24 animate-fade-in relative">
-            {/* Expanded max-width from 6xl to 7xl for a true "Page" feel */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
                 {/* Premium Breadcrumb Navigation */}
@@ -186,12 +185,10 @@ export default function ProductDetails() {
                     <span className="text-stone-900 truncate max-w-[150px] sm:max-w-none">{product.name}</span>
                 </nav>
 
-                {/* SCALED UP PAGE LAYOUT (Larger Card) */}
                 <div className="bg-white rounded-[2.5rem] shadow-xl shadow-stone-200/40 overflow-hidden w-full border border-stone-100 flex flex-col lg:flex-row">
 
-                    {/* Left: Image Gallery (Height scaled up) */}
+                    {/* Left: Image Gallery */}
                     <div className="w-full lg:w-1/2 p-6 sm:p-10 lg:p-12 bg-stone-50/30 flex flex-col gap-4 border-b lg:border-b-0 lg:border-r border-stone-100">
-                        {/* Increased max-h from 480px to 580px */}
                         <div className="relative w-full aspect-[4/5] max-h-[580px] bg-white rounded-2xl overflow-hidden shadow-sm border border-stone-200/60">
                             <Image
                                 src={product.images[activeImageIdx]}
@@ -235,7 +232,6 @@ export default function ProductDetails() {
                                     {product.category || 'Collection'}
                                 </span>
 
-                                {/* Enlarged Title & Price */}
                                 <h1 className="text-3xl sm:text-4xl lg:text-5xl font-light text-stone-900 mb-4 leading-tight">{product.name}</h1>
 
                                 <div className="flex items-center gap-5 mb-6">
@@ -259,13 +255,23 @@ export default function ProductDetails() {
 
                                 <p className="text-stone-500 leading-relaxed text-sm sm:text-base mb-10">{product.description}</p>
 
-                                {/* Color Selection */}
+                                {/* 🔥 UPDATED: Color Selection (Changes Image on click) */}
                                 {product.colors && product.colors.length > 0 && (
                                     <div className="mb-8">
                                         <h3 className="text-xs font-bold tracking-widest uppercase text-stone-900 mb-3.5">Color</h3>
                                         <div className="flex gap-3">
-                                            {product.colors.map(color => (
-                                                <button key={color} onClick={() => setSelectedColor(color)} className={`w-10 h-10 rounded-full border transition-all flex items-center justify-center ${selectedColor === color ? 'border-stone-900 ring-1 ring-offset-2 ring-stone-900 shadow-md' : 'border-stone-300 hover:border-stone-500'}`}>
+                                            {product.colors.map((color, idx) => (
+                                                <button 
+                                                    key={color} 
+                                                    onClick={() => {
+                                                        setSelectedColor(color);
+                                                        // Change image based on color index if image exists
+                                                        if (product.images && product.images.length > idx) {
+                                                            setActiveImageIdx(idx);
+                                                        }
+                                                    }} 
+                                                    className={`w-10 h-10 rounded-full border transition-all flex items-center justify-center ${selectedColor === color ? 'border-stone-900 ring-1 ring-offset-2 ring-stone-900 shadow-md' : 'border-stone-300 hover:border-stone-500'}`}
+                                                >
                                                     <span className="w-8 h-8 rounded-full block border border-stone-200/50" style={{ backgroundColor: color }}></span>
                                                 </button>
                                             ))}
@@ -295,10 +301,8 @@ export default function ProductDetails() {
                                     </div>
                                 )}
 
-                                {/* Actions Row - SCALED UP BUTTONS */}
+                                {/* Actions Row */}
                                 <div className="flex flex-wrap sm:flex-nowrap gap-4 pt-8 mt-auto border-t border-stone-100 items-center">
-
-                                    {/* Premium Pill Quantity Selector (h-14) */}
                                     <div className="flex items-center justify-between w-32 h-14 bg-white border border-stone-200 rounded-full px-1.5 shadow-sm">
                                         <button onClick={decreaseQuantity} className="w-10 h-10 flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-full transition-colors">
                                             <FiMinus size={16} />
@@ -311,14 +315,12 @@ export default function ProductDetails() {
                                         </button>
                                     </div>
 
-                                    {/* Add to Bag (h-14) */}
                                     <MagneticButton className="flex-1 min-w-[180px]">
                                         <button onClick={handleAddToCart} className="w-full h-14 bg-stone-900 text-white rounded-full text-sm font-bold tracking-widest uppercase hover:bg-stone-800 transition-colors shadow-xl shadow-stone-900/20 flex items-center justify-center gap-2">
                                             <FiShoppingBag size={18} /> Add to Bag
                                         </button>
                                     </MagneticButton>
 
-                                    {/* Wishlist (h-14) */}
                                     <button
                                         onClick={handleWishlistToggle}
                                         className={`w-14 h-14 flex-shrink-0 border rounded-full flex items-center justify-center transition-all ${isWishlisted ? 'border-red-200 bg-red-50 text-red-500' : 'border-stone-200 text-stone-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50'}`}
@@ -336,7 +338,8 @@ export default function ProductDetails() {
                                         </div>
                                         <div>
                                             <h4 className="text-xs font-bold uppercase tracking-widest text-stone-900 leading-tight">Free Shipping</h4>
-                                            <p className="text-xs text-stone-500 mt-1">On orders over {convertPrice(freeShippingThreshold || 0)}</p>
+                                            {/* 🔥 UPDATED: Perfectly converting global currency for Shipping Threshold */}
+                                            <p className="text-xs text-stone-500 mt-1">On orders over {convertPrice(freeShippingThreshold || 4999)}</p>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-4 text-stone-600">

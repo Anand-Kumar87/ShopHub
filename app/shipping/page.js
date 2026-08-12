@@ -22,10 +22,10 @@ export default function ShippingPage() {
         currency: 'USD',
         convertPrice: (v) => `$${Number(v).toFixed(2)}`,
         exchangeRate: 1,
-        freeShippingThreshold: 100,
-        shippingIndia: 15,
-        shippingTier1: 50,
-        shippingRow: 80
+        freeShippingThreshold: 100, // $100 base
+        shippingIndia: 15,          // $15 base
+        shippingTier1: 50,          // $50 base
+        shippingRow: 80             // $80 base
     };
 
     const [dbSettings, setDbSettings] = useState(null);
@@ -51,11 +51,11 @@ export default function ShippingPage() {
 
     if (!mounted) return null;
 
-    // Smart Calculations based on DB or Defaults
-    const effectiveFreeShipping = (dbSettings?.freeShippingAmount ?? freeShippingThreshold) * exchangeRate;
-    const effectiveShippingIN = (dbSettings?.shippingIndia ?? shippingIndia) * exchangeRate;
-    const effectiveShippingTier1 = (dbSettings?.shippingTier1 ?? shippingTier1) * exchangeRate;
-    const effectiveShippingRow = (dbSettings?.shippingRow ?? shippingRow) * exchangeRate;
+    // 🔥 FIX: Removed manual exchangeRate multiplication because convertPrice handles it automatically!
+    const baseFreeShipping = dbSettings?.freeShippingAmount ?? freeShippingThreshold;
+    const baseShippingIN = dbSettings?.shippingIndia ?? shippingIndia;
+    const baseShippingTier1 = dbSettings?.shippingTier1 ?? shippingTier1;
+    const baseShippingRow = dbSettings?.shippingRow ?? shippingRow;
 
     return (
         <main className="bg-white min-h-screen animate-fade-in pb-24">
@@ -126,17 +126,17 @@ export default function ShippingPage() {
                                         <tr className="border-b border-stone-100 hover:bg-stone-50 transition-colors">
                                             <td className="py-5 pr-4 font-medium text-stone-900">Domestic (India)</td>
                                             <td className="py-5 px-4">2-4 Business Days</td>
-                                            <td className="py-5 pl-4 text-right">Free <span className="text-stone-400 text-xs">(Over {convertPrice(effectiveFreeShipping)})</span> / {convertPrice(effectiveShippingIN)}</td>
+                                            <td className="py-5 pl-4 text-right">Free <span className="text-stone-400 text-xs">(Over {convertPrice(baseFreeShipping)})</span> / {convertPrice(baseShippingIN)}</td>
                                         </tr>
                                         <tr className="border-b border-stone-100 hover:bg-stone-50 transition-colors">
                                             <td className="py-5 pr-4 font-medium text-stone-900">Tier 1 (US, UK, EU, CA)</td>
                                             <td className="py-5 px-4">5-7 Business Days</td>
-                                            <td className="py-5 pl-4 text-right">{convertPrice(effectiveShippingTier1)}</td>
+                                            <td className="py-5 pl-4 text-right">{convertPrice(baseShippingTier1)}</td>
                                         </tr>
                                         <tr className="border-b border-stone-100 hover:bg-stone-50 transition-colors">
                                             <td className="py-5 pr-4 font-medium text-stone-900">Rest of the World</td>
                                             <td className="py-5 px-4">7-14 Business Days</td>
-                                            <td className="py-5 pl-4 text-right font-bold text-stone-900">{convertPrice(effectiveShippingRow)}</td>
+                                            <td className="py-5 pl-4 text-right font-bold text-stone-900">{convertPrice(baseShippingRow)}</td>
                                         </tr>
                                     </tbody>
                                 </table>

@@ -7,7 +7,7 @@ import { supabase } from './utils/supabase'; // 🔥 Real Database Connection
 import {
   FiHeart, FiShoppingBag, FiTruck, FiRefreshCcw,
   FiShield, FiMapPin, FiArrowRight, FiX, FiStar,
-  FiMinus, FiPlus, FiMessageSquare
+  FiMinus, FiPlus, FiMessageSquare, FiEye // 🔥 Added FiEye for Quick View
 } from 'react-icons/fi';
 import { useCart } from './context/CartContext';
 import { useWishlist } from './context/WishlistContext';
@@ -102,7 +102,10 @@ export default function Home() {
 
   // Action Handlers
   const handleAddToCart = (e, product, qty = 1) => {
-    if (e) e.stopPropagation();
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     const cartItem = { ...product };
     addToCart(cartItem, qty);
     toast.success(
@@ -116,7 +119,10 @@ export default function Home() {
   };
 
   const handleWishlistToggle = (e, product) => {
-    if (e) e.stopPropagation();
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (isInWishlist(product.id)) {
       removeFromWishlist(product.id);
       toast.success(`${product.name} removed from wishlist`, { icon: '💔' });
@@ -357,10 +363,11 @@ export default function Home() {
             products.map((product) => {
               const inWishlist = isInWishlist(product.id);
               return (
-                <div
+                // 🔥 NEW: Wrapped entire card in Link for redirect on click
+                <Link
                   key={product.id}
+                  href={`/product/${product.id}`}
                   className="group flex flex-col relative cursor-pointer"
-                  onClick={() => { setSelectedProduct(product); setModalQuantity(1); }}
                 >
                   <div className="relative aspect-[3/4] w-full bg-stone-100 rounded-xl overflow-hidden mb-4 block">
                     <div className="absolute inset-0 z-0">
@@ -373,12 +380,28 @@ export default function Home() {
                       />
                     </div>
 
-                    <button
-                      onClick={(e) => handleWishlistToggle(e, product)}
-                      className={`absolute top-3 right-3 p-2.5 bg-white/90 backdrop-blur-sm shadow-sm rounded-full transition-all z-10 ${inWishlist ? 'text-red-500' : 'text-stone-400 hover:text-red-500 hover:bg-white'}`}
-                    >
-                      <FiHeart className={inWishlist ? "fill-current" : ""} />
-                    </button>
+                    {/* 🔥 NEW: Added Quick View Button alongside Wishlist */}
+                    <div className="absolute top-3 right-3 flex flex-col gap-2 z-10">
+                      <button
+                        onClick={(e) => handleWishlistToggle(e, product)}
+                        className={`p-2.5 bg-white/90 backdrop-blur-sm shadow-sm rounded-full transition-all ${inWishlist ? 'text-red-500' : 'text-stone-400 hover:text-red-500 hover:bg-white'}`}
+                      >
+                        <FiHeart size={16} className={inWishlist ? "fill-current" : ""} />
+                      </button>
+                      
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setSelectedProduct(product);
+                          setModalQuantity(1);
+                        }}
+                        className="p-2.5 bg-white/90 backdrop-blur-sm text-stone-400 hover:text-stone-900 rounded-full transition-all duration-300 shadow-sm flex items-center justify-center lg:opacity-0 lg:group-hover:opacity-100"
+                        aria-label="Quick View"
+                      >
+                        <FiEye size={16} />
+                      </button>
+                    </div>
 
                     <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out z-10">
                       <button
@@ -411,7 +434,7 @@ export default function Home() {
                       ))}
                     </div>
                   )}
-                </div>
+                </Link>
               );
             })
           ) : (

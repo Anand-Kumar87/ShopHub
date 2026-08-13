@@ -454,6 +454,15 @@ export default function CheckoutPage() {
             } else {
                 toast.success("Order synced to Real Database!");
 
+                // 🔥 FIX: Deduct Stock from Real Database automatically after order
+                for (const item of orderPayload.items) {
+                    const { data: productData } = await supabase.from('products').select('stock').eq('id', item.id).single();
+                    if (productData) {
+                        const newStock = Math.max(0, productData.stock - item.quantity); // Ensures stock doesn't go below 0
+                        await supabase.from('products').update({ stock: newStock }).eq('id', item.id);
+                    }
+                }
+
                 // 🔥 SEND ACTUAL EMAIL AUTOMATICALLY
                 try {
                     await fetch('/api/email/order-confirmation', {
@@ -501,25 +510,26 @@ export default function CheckoutPage() {
                         // Ensure price is a number to prevent NaN calculation errors
                         const itemPrice = typeof item.price === 'string' ? parseFloat(item.price) : item.price;
                         return (
-                        <div key={idx} className="flex gap-4 group">
-                            <div className="w-16 sm:w-20 aspect-[3/4] bg-white rounded-lg overflow-hidden flex-shrink-0 border border-stone-100">
-                                {item.image || item.images?.[0] ? (
-                                    <img
-                                        src={item.image || item.images[0]}
-                                        alt={item.name}
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                                    />
-                                ) : (
-                                    <div className="w-full h-full bg-stone-200" />
-                                )}
+                            <div key={idx} className="flex gap-4 group">
+                                <div className="w-16 sm:w-20 aspect-[3/4] bg-white rounded-lg overflow-hidden flex-shrink-0 border border-stone-100">
+                                    {item.image || item.images?.[0] ? (
+                                        <img
+                                            src={item.image || item.images[0]}
+                                            alt={item.name}
+                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full bg-stone-200" />
+                                    )}
+                                </div>
+                                <div className="flex-1 flex flex-col justify-center">
+                                    <h4 className="text-sm font-bold text-stone-900 line-clamp-1 mb-1">{item.name}</h4>
+                                    <p className="text-xs text-stone-500 uppercase tracking-widest mb-1">Qty: {item.quantity}</p>
+                                    <p className="text-sm font-bold text-stone-900">{convertPrice(itemPrice * item.quantity)}</p>
+                                </div>
                             </div>
-                            <div className="flex-1 flex flex-col justify-center">
-                                <h4 className="text-sm font-bold text-stone-900 line-clamp-1 mb-1">{item.name}</h4>
-                                <p className="text-xs text-stone-500 uppercase tracking-widest mb-1">Qty: {item.quantity}</p>
-                                <p className="text-sm font-bold text-stone-900">{convertPrice(itemPrice * item.quantity)}</p>
-                            </div>
-                        </div>
-                    )})
+                        )
+                    })
                 )}
             </div>
 

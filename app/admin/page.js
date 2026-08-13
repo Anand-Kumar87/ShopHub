@@ -10,7 +10,7 @@ import {
     FiGrid, FiBox, FiShoppingBag, FiUsers, FiTag,
     FiMail, FiSettings, FiPlus, FiEdit2, FiTrash2,
     FiX, FiGlobe, FiCircle, FiCheck, FiGift, FiUploadCloud, FiImage,
-    FiCreditCard, FiSmartphone, FiBriefcase
+    FiCreditCard, FiSmartphone, FiBriefcase, FiTruck // 🔥 बस यहाँ FiTruck जोड़ना है
 } from 'react-icons/fi';
 
 // Helper for generating IDs safely
@@ -22,10 +22,14 @@ const safePrice = (val) => {
     return isNaN(num) ? 0 : num;
 };
 
+// 🔥 FIX: 12-Hour AM/PM Format
 const safeDate = (dateString) => {
     if (!dateString) return 'Pending / Not Set';
     const d = new Date(dateString);
-    return isNaN(d.getTime()) ? 'Pending / Not Set' : d.toLocaleString('en-GB');
+    return isNaN(d.getTime()) ? 'Pending / Not Set' : d.toLocaleString('en-IN', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: true
+    }).toUpperCase();
 };
 
 export default function AdminDashboard() {
@@ -225,7 +229,11 @@ export default function AdminDashboard() {
         };
     });
 
-    const totalRevenue = orders.reduce((sum, order) => sum + safePrice(order.total_amount || order.total), 0);
+    // 🔥 FIX: Live Stats Calculations for Overview
+    const totalRevenue = orders.reduce((sum, order) => sum + safePrice(order.totals?.total || order.total_amount || order.total), 0);
+    const totalTaxCollected = orders.reduce((sum, order) => sum + safePrice(order.totals?.tax || order.tax), 0);
+    const totalShippingCollected = orders.reduce((sum, order) => sum + safePrice(order.totals?.shipping || order.shipping || order.shippingCost), 0);
+    const totalStock = products.reduce((sum, p) => sum + (p.stock || 0), 0);
     const unreadMessages = messages.filter(m => m.status === 'unread').length;
 
     const handleImageUpload = (e, isCategory = false) => {
@@ -502,7 +510,7 @@ export default function AdminDashboard() {
             try {
                 const { error } = await supabase.from('coupons').delete().eq('id', id);
                 if (error) throw error;
-                
+
                 const newCoupons = coupons.filter(c => c.id !== id);
                 setCoupons(newCoupons);
                 localStorage.setItem('shophub_admin_coupons', JSON.stringify(newCoupons));
@@ -763,27 +771,50 @@ export default function AdminDashboard() {
                                     <h2 className="text-3xl font-light text-stone-900">Dashboard <span className="font-serif italic font-bold">Overview</span></h2>
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+
+                                    {/* 🔥 FIX: Added Total Stock here */}
                                     <div className="bg-stone-50 rounded-3xl p-8 border border-stone-100 hover:border-stone-900 transition-colors group cursor-pointer" onClick={() => setActiveTab('products')}>
                                         <FiBox size={24} className="text-stone-400 mb-6 group-hover:text-stone-900 transition-colors" />
-                                        <h3 className="text-4xl font-light text-stone-900 mb-1">{products.length}</h3>
-                                        <p className="text-[10px] font-bold tracking-widest uppercase text-stone-500">Active Pieces</p>
+                                        <div className="flex items-baseline gap-2">
+                                            <h3 className="text-4xl font-light text-stone-900 mb-1">{products.length}</h3>
+                                            <span className="text-sm font-bold text-stone-400">({totalStock} pcs)</span>
+                                        </div>
+                                        <p className="text-[10px] font-bold tracking-widest uppercase text-stone-500">Active Pieces & Total Stock</p>
                                     </div>
+
                                     <div className="bg-stone-50 rounded-3xl p-8 border border-stone-100 hover:border-stone-900 transition-colors group cursor-pointer" onClick={() => setActiveTab('orders')}>
                                         <FiShoppingBag size={24} className="text-stone-400 mb-6 group-hover:text-stone-900 transition-colors" />
                                         <h3 className="text-4xl font-light text-stone-900 mb-1">{orders.length}</h3>
                                         <p className="text-[10px] font-bold tracking-widest uppercase text-stone-500">Total Orders</p>
                                     </div>
+
                                     <div className="bg-stone-50 rounded-3xl p-8 border border-stone-100 hover:border-stone-900 transition-colors group cursor-pointer" onClick={() => setActiveTab('customers')}>
                                         <FiUsers size={24} className="text-stone-400 mb-6 group-hover:text-stone-900 transition-colors" />
                                         {/* 🔥 FIX: Uses dynamic customers length */}
                                         <h3 className="text-4xl font-light text-stone-900 mb-1">{dynamicCustomers.length}</h3>
                                         <p className="text-[10px] font-bold tracking-widest uppercase text-stone-500">Clientele</p>
                                     </div>
+
                                     <div className="bg-stone-50 rounded-3xl p-8 border border-stone-100 hover:border-stone-900 transition-colors group">
                                         <FiTag size={24} className="text-stone-400 mb-6 group-hover:text-stone-900 transition-colors" />
                                         <h3 className="text-4xl font-light text-stone-900 mb-1">{convertPrice(totalRevenue)}</h3>
                                         <p className="text-[10px] font-bold tracking-widest uppercase text-stone-500">Gross Revenue</p>
                                     </div>
+
+                                    {/* 🔥 FIX: New Card for Shipping Collected */}
+                                    <div className="bg-stone-50 rounded-3xl p-8 border border-stone-100 hover:border-stone-900 transition-colors group">
+                                        <FiTruck size={24} className="text-stone-400 mb-6 group-hover:text-stone-900 transition-colors" />
+                                        <h3 className="text-2xl font-light text-stone-900 mb-1">{convertPrice(totalShippingCollected)}</h3>
+                                        <p className="text-[10px] font-bold tracking-widest uppercase text-stone-500">Shipping Collected</p>
+                                    </div>
+
+                                    {/* 🔥 FIX: New Card for Tax Collected */}
+                                    <div className="bg-stone-50 rounded-3xl p-8 border border-stone-100 hover:border-stone-900 transition-colors group">
+                                        <FiTag size={24} className="text-stone-400 mb-6 group-hover:text-stone-900 transition-colors" />
+                                        <h3 className="text-2xl font-light text-stone-900 mb-1">{convertPrice(totalTaxCollected)}</h3>
+                                        <p className="text-[10px] font-bold tracking-widest uppercase text-stone-500">Tax Collected</p>
+                                    </div>
+
                                 </div>
                             </div>
                         )}
@@ -842,9 +873,14 @@ export default function AdminDashboard() {
                                                         )}
                                                     </td>
                                                     <td className="py-4 px-4">
-                                                        <span className={product.stock < 10 ? 'text-red-500 font-bold' : ''}>
-                                                            {product.stock} pcs
-                                                        </span>
+                                                        {/* 🔥 FIX: Out of Stock visual label added */}
+                                                        {product.stock <= 0 ? (
+                                                            <span className="text-red-500 font-bold bg-red-50 px-2 py-1 rounded">Out of Stock</span>
+                                                        ) : (
+                                                            <span className={product.stock < 10 ? 'text-orange-500 font-bold' : ''}>
+                                                                {product.stock} pcs
+                                                            </span>
+                                                        )}
                                                     </td>
                                                     <td className="py-4 pl-4 text-right">
                                                         <div className="flex items-center justify-end gap-3">
@@ -1490,19 +1526,28 @@ export default function AdminDashboard() {
                                     <div className="space-y-3 text-sm">
                                         <div className="flex justify-between text-stone-500">
                                             <span>Subtotal</span>
-                                            <span className="font-medium text-stone-900">{convertPrice(safePrice(selectedOrder.subtotal || selectedOrder.total_amount))}</span>
+                                            <span className="font-medium text-stone-900">{convertPrice(safePrice(selectedOrder.totals?.subtotal || selectedOrder.subtotal))}</span>
                                         </div>
+
+                                        {/* 🔥 FIX: Added Dynamic Discount Display here */}
+                                        {(safePrice(selectedOrder.totals?.discount) > 0 || selectedOrder.coupon) && (
+                                            <div className="flex justify-between text-green-600 animate-fade-in">
+                                                <span>Discount {selectedOrder.coupon ? `(${selectedOrder.coupon})` : ''}</span>
+                                                <span className="font-bold">-{convertPrice(safePrice(selectedOrder.totals?.discount))}</span>
+                                            </div>
+                                        )}
+
                                         <div className="flex justify-between text-stone-500">
                                             <span>Shipping</span>
-                                            <span className="font-medium text-stone-900">{convertPrice(safePrice(selectedOrder.shipping || selectedOrder.shippingCost))}</span>
+                                            <span className="font-medium text-stone-900">{convertPrice(safePrice(selectedOrder.totals?.shipping || selectedOrder.shipping))}</span>
                                         </div>
                                         <div className="flex justify-between text-stone-500">
                                             <span>Tax</span>
-                                            <span className="font-medium text-stone-900">{convertPrice(safePrice(selectedOrder.tax))}</span>
+                                            <span className="font-medium text-stone-900">{convertPrice(safePrice(selectedOrder.totals?.tax || selectedOrder.tax))}</span>
                                         </div>
                                         <div className="flex justify-between pt-3 border-t border-stone-200 mt-2 font-bold text-base">
                                             <span className="text-stone-900">Total</span>
-                                            <span className="text-stone-900">{convertPrice(safePrice(selectedOrder.total || selectedOrder.total_amount))}</span>
+                                            <span className="text-stone-900">{convertPrice(safePrice(selectedOrder.totals?.total || selectedOrder.total_amount || selectedOrder.total))}</span>
                                         </div>
                                     </div>
                                 </div>

@@ -3,22 +3,23 @@ export const runtime = 'nodejs'; // 🔥 Added Node.js runtime for Vercel consis
 
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
-import { createClient } from '@supabase/supabase-js'; // 🔥 Supabase client added for database saving
+import { createClient } from '@supabase/supabase-js'; 
+import crypto from 'crypto'; // 🔥 Added for unique text ID generation
 
 // Initialize Supabase
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-// Use Service Role Key if available (for backend), otherwise Anon Key
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function POST(req) {
     try {
         const { firstName, lastName, email, phone, subject, message } = await req.json();
-        
+
         const senderName = `${firstName} ${lastName}`.trim();
 
         // 🔥 STEP 1: SAVE INQUIRY TO DATABASE FOR ADMIN PANEL
         const { error: dbError } = await supabase.from('inquiries').insert([{
+            id: crypto.randomUUID(), // 🔥 FIX: Automatically generates a unique text ID
             sender: senderName,
             email: email,
             phone: phone || '',
@@ -31,11 +32,9 @@ export async function POST(req) {
 
         if (dbError) {
             console.error("Supabase Save Error:", dbError);
-            // We log the error but still try to send the email so you don't miss the message
         }
 
         // 🔥 STEP 2: SEND PREMIUM EMAIL NOTIFICATION
-        // Nodemailer Transporter Setup (Gmail)
         const transporter = nodemailer.createTransport({
             service: 'gmail',
             auth: {
@@ -44,11 +43,10 @@ export async function POST(req) {
             },
         });
 
-        // Premium HTML Email Template
         const mailOptions = {
             from: '"ShopHub Portal" <' + process.env.EMAIL_USER + '>',
-            to: process.env.EMAIL_USER, 
-            replyTo: email, 
+            to: process.env.EMAIL_USER,
+            replyTo: email,
             subject: `New Client Inquiry: ${subject}`,
             html: `
                 <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e7e5e4; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05);">

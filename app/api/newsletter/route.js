@@ -78,5 +78,5 @@ export async function POST(req) {
     } catch (error) {
         console.error("Newsletter Email Error:", error);
         return NextResponse.json({ error: 'Subscription failed' }, { status: 500 });
-    }
+    } //new file 
 }

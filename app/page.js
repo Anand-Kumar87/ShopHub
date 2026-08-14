@@ -440,9 +440,9 @@ export default function Home() {
               <p className="text-xs font-bold tracking-widest text-stone-400 mb-2 uppercase">Students Get</p>
               <h3 className="text-4xl font-bold mb-3">10% OFF</h3>
               <p className="text-sm text-stone-300 mb-6">Verify your student status and save more.</p>
-              <button onClick={() => toast('Redirecting to Student Portal...', { icon: '🎓' })} className="bg-white text-stone-900 text-sm font-bold px-6 py-2.5 rounded-full hover:bg-stone-200 transition-colors w-max">
-                GET DISCOUNT
-              </button>
+              <Link href="/student-discount" className="bg-white text-stone-900 text-sm font-bold px-6 py-2.5 rounded-full hover:bg-stone-200 transition-colors w-max block text-center">
+    GET DISCOUNT
+</Link>
             </div>
             <div className="absolute right-0 top-0 bottom-0 w-1/2 opacity-50 md:opacity-100">
               <Image src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=500&q=80" alt="Student Promo" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover object-left" />

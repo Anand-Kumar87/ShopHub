@@ -10,7 +10,7 @@ import {
     FiGrid, FiBox, FiShoppingBag, FiUsers, FiTag,
     FiMail, FiSettings, FiPlus, FiEdit2, FiTrash2,
     FiX, FiGlobe, FiCircle, FiCheck, FiGift, FiUploadCloud, FiImage,
-    FiCreditCard, FiSmartphone, FiBriefcase
+    FiCreditCard, FiSmartphone, FiBriefcase, FiTruck // 🔥 बस यहाँ FiTruck जोड़ना है
 } from 'react-icons/fi';
 
 // Helper for generating IDs safely
@@ -22,10 +22,14 @@ const safePrice = (val) => {
     return isNaN(num) ? 0 : num;
 };
 
+// 🔥 FIX: 12-Hour AM/PM Format
 const safeDate = (dateString) => {
     if (!dateString) return 'Pending / Not Set';
     const d = new Date(dateString);
-    return isNaN(d.getTime()) ? 'Pending / Not Set' : d.toLocaleString('en-GB');
+    return isNaN(d.getTime()) ? 'Pending / Not Set' : d.toLocaleString('en-IN', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: true
+    }).toUpperCase();
 };
 
 export default function AdminDashboard() {
@@ -200,15 +204,16 @@ export default function AdminDashboard() {
         };
     }, []);
 
+    // 🔥 FIX: Removed Exchange Rate conversion here so it stays pure INR in admin panel
     useEffect(() => {
         setSettingsForm({
             ...settings,
-            freeShippingAmount: Number((settings.freeShippingAmount * exchangeRate).toFixed(2)),
-            shippingIndia: Number((settings.shippingIndia * exchangeRate).toFixed(2)),
-            shippingTier1: Number((settings.shippingTier1 * exchangeRate).toFixed(2)),
-            shippingRow: Number((settings.shippingRow * exchangeRate).toFixed(2)),
+            freeShippingAmount: Number((settings.freeShippingAmount || 0).toFixed(2)),
+            shippingIndia: Number((settings.shippingIndia || 0).toFixed(2)),
+            shippingTier1: Number((settings.shippingTier1 || 0).toFixed(2)),
+            shippingRow: Number((settings.shippingRow || 0).toFixed(2)),
         });
-    }, [settings, exchangeRate]);
+    }, [settings]);
 
     if (!mounted) return null;
 
@@ -224,7 +229,11 @@ export default function AdminDashboard() {
         };
     });
 
-    const totalRevenue = orders.reduce((sum, order) => sum + safePrice(order.total_amount || order.total), 0);
+    // 🔥 FIX: Live Stats Calculations for Overview
+    const totalRevenue = orders.reduce((sum, order) => sum + safePrice(order.totals?.total || order.total_amount || order.total), 0);
+    const totalTaxCollected = orders.reduce((sum, order) => sum + safePrice(order.totals?.tax || order.tax), 0);
+    const totalShippingCollected = orders.reduce((sum, order) => sum + safePrice(order.totals?.shipping || order.shipping || order.shippingCost), 0);
+    const totalStock = products.reduce((sum, p) => sum + (p.stock || 0), 0);
     const unreadMessages = messages.filter(m => m.status === 'unread').length;
 
     const handleImageUpload = (e, isCategory = false) => {
@@ -264,8 +273,9 @@ export default function AdminDashboard() {
             setSelectedProduct(product);
             setProductForm({
                 ...product,
-                price: Number((product.price * exchangeRate).toFixed(2)),
-                salePrice: Number(((product.salePrice || 0) * exchangeRate).toFixed(2)),
+                // 🔥 FIX: Removed Exchange Rate conversion here so it stays pure INR in admin panel
+                price: Number((product.price || 0).toFixed(2)),
+                salePrice: Number(((product.salePrice || 0)).toFixed(2)),
                 images: product.images || (product.image ? [product.image] : []),
                 colors: product.colors ? product.colors.join(', ') : '',
                 sizes: product.sizes ? product.sizes.join(', ') : ''
@@ -279,6 +289,7 @@ export default function AdminDashboard() {
         }
         setIsProductModalOpen(true);
     };
+
     const handleProductSubmit = async (e) => {
         e.preventDefault();
 
@@ -294,12 +305,12 @@ export default function AdminDashboard() {
         // 2. फाइनल डेटा तैयार करना
         const finalProduct = {
             ...productForm,
-            price: Number(productForm.price) / exchangeRate,
-            salePrice: Number(productForm.salePrice) / exchangeRate,
+            // 🔥 FIX: Removed Exchange Rate conversion here so it stays pure INR in admin panel
+            price: Number(productForm.price),
+            salePrice: Number(productForm.salePrice),
             colors: colorsArray,
             sizes: sizesArray,
-            // 'onSale' के हिसाब से oldPrice और tags को आटोमेटिक एडजस्ट करना
-            oldPrice: productForm.onSale ? (Number(productForm.price) / exchangeRate) : null,
+            oldPrice: productForm.onSale ? Number(productForm.price) : null,
             tags: productForm.onSale ? ['Sale'] : ['New']
         };
 
@@ -446,7 +457,8 @@ export default function AdminDashboard() {
             setSelectedCoupon(coupon);
             setCouponForm({
                 ...coupon,
-                discount: coupon.type === 'fixed' ? Number((coupon.discount * exchangeRate).toFixed(2)) : coupon.discount
+                // 🔥 FIX: Removed Exchange Rate conversion here so it stays pure INR in admin panel
+                discount: coupon.discount
             });
         } else {
             setSelectedCoupon(null);
@@ -461,7 +473,8 @@ export default function AdminDashboard() {
         const finalCoupon = {
             ...couponForm,
             code: formattedCode,
-            discount: couponForm.type === 'fixed' ? (couponForm.discount / exchangeRate) : couponForm.discount
+            // 🔥 FIX: Removed Exchange Rate conversion here so it stays pure INR in admin panel
+            discount: couponForm.discount
         };
 
         let newCoupons = [];
@@ -491,6 +504,24 @@ export default function AdminDashboard() {
         setIsCouponModalOpen(false);
     };
 
+    // 🔥 FIX: Missing deleteCoupon function added here!
+    const deleteCoupon = async (id) => {
+        if (window.confirm("Delete this promo code?")) {
+            try {
+                const { error } = await supabase.from('coupons').delete().eq('id', id);
+                if (error) throw error;
+
+                const newCoupons = coupons.filter(c => c.id !== id);
+                setCoupons(newCoupons);
+                localStorage.setItem('shophub_admin_coupons', JSON.stringify(newCoupons));
+                toast.success("Promo code deleted successfully!");
+            } catch (error) {
+                console.error("Delete Error:", error);
+                toast.error("Failed to delete promo code.");
+            }
+        }
+    };
+
     const openCustomerModalForEdit = (cust = null) => {
         if (cust) {
             setCustomerForm({
@@ -499,7 +530,8 @@ export default function AdminDashboard() {
                 email: cust.email || '',
                 role: cust.role || 'customer',
                 orders: cust.orders || 0,
-                spent: cust.spent ? Number((cust.spent * exchangeRate).toFixed(2)) : 0,
+                // 🔥 FIX: Removed Exchange Rate conversion here so it stays pure INR in admin panel
+                spent: cust.spent ? Number((cust.spent).toFixed(2)) : 0,
                 isProfile: cust.isProfile || false
             });
         } else {
@@ -510,7 +542,8 @@ export default function AdminDashboard() {
 
     const handleNewCustomerSubmit = async (e) => {
         e.preventDefault();
-        const baseSpentAmount = Number(customerForm.spent) / exchangeRate;
+        // 🔥 FIX: Removed Exchange Rate conversion here so it stays pure INR in admin panel
+        const baseSpentAmount = Number(customerForm.spent);
         const nameParts = customerForm.name.split(' ');
         const firstName = nameParts[0] || '';
         const lastName = nameParts.slice(1).join(' ') || '';
@@ -627,12 +660,13 @@ export default function AdminDashboard() {
 
     const handleSettingsSubmit = async (e) => {
         e.preventDefault();
+        // 🔥 FIX: Removed Exchange Rate conversion here so it stays pure INR in admin panel
         const finalSettings = {
             ...settingsForm,
-            freeShippingAmount: settingsForm.freeShippingAmount / exchangeRate,
-            shippingIndia: settingsForm.shippingIndia / exchangeRate,
-            shippingTier1: settingsForm.shippingTier1 / exchangeRate,
-            shippingRow: settingsForm.shippingRow / exchangeRate,
+            freeShippingAmount: Number(settingsForm.freeShippingAmount),
+            shippingIndia: Number(settingsForm.shippingIndia),
+            shippingTier1: Number(settingsForm.shippingTier1),
+            shippingRow: Number(settingsForm.shippingRow),
         };
         setSettings(finalSettings);
         try {
@@ -737,27 +771,50 @@ export default function AdminDashboard() {
                                     <h2 className="text-3xl font-light text-stone-900">Dashboard <span className="font-serif italic font-bold">Overview</span></h2>
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+
+                                    {/* 🔥 FIX: Added Total Stock here */}
                                     <div className="bg-stone-50 rounded-3xl p-8 border border-stone-100 hover:border-stone-900 transition-colors group cursor-pointer" onClick={() => setActiveTab('products')}>
                                         <FiBox size={24} className="text-stone-400 mb-6 group-hover:text-stone-900 transition-colors" />
-                                        <h3 className="text-4xl font-light text-stone-900 mb-1">{products.length}</h3>
-                                        <p className="text-[10px] font-bold tracking-widest uppercase text-stone-500">Active Pieces</p>
+                                        <div className="flex items-baseline gap-2">
+                                            <h3 className="text-4xl font-light text-stone-900 mb-1">{products.length}</h3>
+                                            <span className="text-sm font-bold text-stone-400">({totalStock} pcs)</span>
+                                        </div>
+                                        <p className="text-[10px] font-bold tracking-widest uppercase text-stone-500">Active Pieces & Total Stock</p>
                                     </div>
+
                                     <div className="bg-stone-50 rounded-3xl p-8 border border-stone-100 hover:border-stone-900 transition-colors group cursor-pointer" onClick={() => setActiveTab('orders')}>
                                         <FiShoppingBag size={24} className="text-stone-400 mb-6 group-hover:text-stone-900 transition-colors" />
                                         <h3 className="text-4xl font-light text-stone-900 mb-1">{orders.length}</h3>
                                         <p className="text-[10px] font-bold tracking-widest uppercase text-stone-500">Total Orders</p>
                                     </div>
+
                                     <div className="bg-stone-50 rounded-3xl p-8 border border-stone-100 hover:border-stone-900 transition-colors group cursor-pointer" onClick={() => setActiveTab('customers')}>
                                         <FiUsers size={24} className="text-stone-400 mb-6 group-hover:text-stone-900 transition-colors" />
                                         {/* 🔥 FIX: Uses dynamic customers length */}
                                         <h3 className="text-4xl font-light text-stone-900 mb-1">{dynamicCustomers.length}</h3>
                                         <p className="text-[10px] font-bold tracking-widest uppercase text-stone-500">Clientele</p>
                                     </div>
+
                                     <div className="bg-stone-50 rounded-3xl p-8 border border-stone-100 hover:border-stone-900 transition-colors group">
                                         <FiTag size={24} className="text-stone-400 mb-6 group-hover:text-stone-900 transition-colors" />
                                         <h3 className="text-4xl font-light text-stone-900 mb-1">{convertPrice(totalRevenue)}</h3>
                                         <p className="text-[10px] font-bold tracking-widest uppercase text-stone-500">Gross Revenue</p>
                                     </div>
+
+                                    {/* 🔥 FIX: New Card for Shipping Collected */}
+                                    <div className="bg-stone-50 rounded-3xl p-8 border border-stone-100 hover:border-stone-900 transition-colors group">
+                                        <FiTruck size={24} className="text-stone-400 mb-6 group-hover:text-stone-900 transition-colors" />
+                                        <h3 className="text-2xl font-light text-stone-900 mb-1">{convertPrice(totalShippingCollected)}</h3>
+                                        <p className="text-[10px] font-bold tracking-widest uppercase text-stone-500">Shipping Collected</p>
+                                    </div>
+
+                                    {/* 🔥 FIX: New Card for Tax Collected */}
+                                    <div className="bg-stone-50 rounded-3xl p-8 border border-stone-100 hover:border-stone-900 transition-colors group">
+                                        <FiTag size={24} className="text-stone-400 mb-6 group-hover:text-stone-900 transition-colors" />
+                                        <h3 className="text-2xl font-light text-stone-900 mb-1">{convertPrice(totalTaxCollected)}</h3>
+                                        <p className="text-[10px] font-bold tracking-widest uppercase text-stone-500">Tax Collected</p>
+                                    </div>
+
                                 </div>
                             </div>
                         )}
@@ -816,9 +873,14 @@ export default function AdminDashboard() {
                                                         )}
                                                     </td>
                                                     <td className="py-4 px-4">
-                                                        <span className={product.stock < 10 ? 'text-red-500 font-bold' : ''}>
-                                                            {product.stock} pcs
-                                                        </span>
+                                                        {/* 🔥 FIX: Out of Stock visual label added */}
+                                                        {product.stock <= 0 ? (
+                                                            <span className="text-red-500 font-bold bg-red-50 px-2 py-1 rounded">Out of Stock</span>
+                                                        ) : (
+                                                            <span className={product.stock < 10 ? 'text-orange-500 font-bold' : ''}>
+                                                                {product.stock} pcs
+                                                            </span>
+                                                        )}
                                                     </td>
                                                     <td className="py-4 pl-4 text-right">
                                                         <div className="flex items-center justify-end gap-3">
@@ -1323,12 +1385,12 @@ export default function AdminDashboard() {
                                                 <input required type="number" step="0.01" value={settingsForm.taxRate || 0} onChange={e => setSettingsForm({ ...settingsForm, taxRate: Number(e.target.value) })} className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm font-mono" placeholder="e.g. 18 for 18%" />
                                             </div>
                                             <div>
-                                                <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Free Shipping Threshold ({currency})</label>
+                                                <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Free Shipping Threshold (INR)</label>
                                                 <input required type="number" value={settingsForm.freeShippingAmount || 0} onChange={e => setSettingsForm({ ...settingsForm, freeShippingAmount: Number(e.target.value) })} className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm font-mono" />
                                             </div>
                                         </div>
 
-                                        <h4 className="text-[10px] font-bold tracking-widest uppercase text-stone-400 mt-8 mb-4">Shipping Zones (Base Rates in {currency})</h4>
+                                        <h4 className="text-[10px] font-bold tracking-widest uppercase text-stone-400 mt-8 mb-4">Shipping Zones (Base Rates in INR)</h4>
                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
                                             <div>
                                                 <label className="block text-xs font-medium text-stone-600 mb-2">India</label>
@@ -1464,19 +1526,28 @@ export default function AdminDashboard() {
                                     <div className="space-y-3 text-sm">
                                         <div className="flex justify-between text-stone-500">
                                             <span>Subtotal</span>
-                                            <span className="font-medium text-stone-900">{convertPrice(safePrice(selectedOrder.subtotal || selectedOrder.total_amount))}</span>
+                                            <span className="font-medium text-stone-900">{convertPrice(safePrice(selectedOrder.totals?.subtotal || selectedOrder.subtotal))}</span>
                                         </div>
+
+                                        {/* 🔥 FIX: Added Dynamic Discount Display here */}
+                                        {(safePrice(selectedOrder.totals?.discount) > 0 || selectedOrder.coupon) && (
+                                            <div className="flex justify-between text-green-600 animate-fade-in">
+                                                <span>Discount {selectedOrder.coupon ? `(${selectedOrder.coupon})` : ''}</span>
+                                                <span className="font-bold">-{convertPrice(safePrice(selectedOrder.totals?.discount))}</span>
+                                            </div>
+                                        )}
+
                                         <div className="flex justify-between text-stone-500">
                                             <span>Shipping</span>
-                                            <span className="font-medium text-stone-900">{convertPrice(safePrice(selectedOrder.shipping || selectedOrder.shippingCost))}</span>
+                                            <span className="font-medium text-stone-900">{convertPrice(safePrice(selectedOrder.totals?.shipping || selectedOrder.shipping))}</span>
                                         </div>
                                         <div className="flex justify-between text-stone-500">
                                             <span>Tax</span>
-                                            <span className="font-medium text-stone-900">{convertPrice(safePrice(selectedOrder.tax))}</span>
+                                            <span className="font-medium text-stone-900">{convertPrice(safePrice(selectedOrder.totals?.tax || selectedOrder.tax))}</span>
                                         </div>
                                         <div className="flex justify-between pt-3 border-t border-stone-200 mt-2 font-bold text-base">
                                             <span className="text-stone-900">Total</span>
-                                            <span className="text-stone-900">{convertPrice(safePrice(selectedOrder.total || selectedOrder.total_amount))}</span>
+                                            <span className="text-stone-900">{convertPrice(safePrice(selectedOrder.totals?.total || selectedOrder.total_amount || selectedOrder.total))}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1628,7 +1699,7 @@ export default function AdminDashboard() {
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Total Spent ({currency})</label>
+                                <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Total Spent (INR)</label>
                                 <input
                                     type="number" value={customerForm.spent}
                                     onChange={e => setCustomerForm({ ...customerForm, spent: Number(e.target.value) })}
@@ -1737,7 +1808,7 @@ export default function AdminDashboard() {
                                     <h4 className="text-[10px] font-bold tracking-widest uppercase text-stone-900 border-b border-stone-200 pb-2 mt-8">Pricing & Inventory</h4>
                                     <div className="grid grid-cols-2 gap-6">
                                         <div>
-                                            <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Base Price ({currency}) *</label>
+                                            <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Base Price (INR) *</label>
                                             <input
                                                 required
                                                 type="number"
@@ -1774,7 +1845,7 @@ export default function AdminDashboard() {
                                             </div>
                                             {productForm.onSale && (
                                                 <div className="animate-fade-in mt-2">
-                                                    <label className="block text-[9px] font-bold tracking-widest uppercase text-red-50 mb-1">Sale Price ({currency})</label>
+                                                    <label className="block text-[9px] font-bold tracking-widest uppercase text-red-50 mb-1">Sale Price (INR)</label>
                                                     <input
                                                         type="number"
                                                         step="0.01"
@@ -2024,7 +2095,7 @@ export default function AdminDashboard() {
                                         className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm appearance-none"
                                     >
                                         <option value="percent">Percentage (%)</option>
-                                        <option value="fixed">Fixed Amount ({currency})</option>
+                                        <option value="fixed">Fixed Amount (INR)</option>
                                     </select>
                                 </div>
                                 <div>

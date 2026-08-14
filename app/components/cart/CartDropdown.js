@@ -12,7 +12,7 @@ export default function CartDropdown() {
   const [isClosing, setIsClosing] = useState(false);
 
   // Get dynamic currency formatting
-  const { convertPrice } = useGlobalCurrency() || { convertPrice: (v) => `$${Number(v).toFixed(2)}` };
+  const { convertPrice } = useGlobalCurrency() || { convertPrice: (v) => `₹${Number(v).toFixed(2)}` };
 
   // Smooth close logic
   const handleClose = () => {
@@ -69,6 +69,9 @@ export default function CartDropdown() {
               {cartItems.map((item) => {
                 // Determine image source correctly from database structure
                 const itemImage = item.images?.[0] || item.image;
+
+                // 🔥 Fix: Ensure price is treated as a number
+                const safeItemPrice = typeof item.price === 'string' ? parseFloat(item.price) : item.price;
 
                 return (
                   <li key={item.id} className="p-6 transition-colors hover:bg-stone-50/50 group flex gap-5">
@@ -131,7 +134,7 @@ export default function CartDropdown() {
                         </div>
 
                         <span className="text-sm font-bold text-stone-900">
-                          {convertPrice(item.price * item.quantity)}
+                          {convertPrice(safeItemPrice * item.quantity)}
                         </span>
                       </div>
                     </div>

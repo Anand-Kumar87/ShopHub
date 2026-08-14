@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
+import useSWR from 'swr'; // 🔥 SWR Imported for Light-Speed Caching
 import {
     FiHeart, FiX, FiStar, FiFilter, FiMinus, FiPlus,
     FiGrid, FiList, FiMessageSquare
@@ -21,6 +22,35 @@ import { supabase } from '../utils/supabase';
 // Magic button Import 
 import MagneticButton from '../components/MagneticButton';
 
+// 🔥 SWR Fetcher Functions for Shop Page
+const fetchShopCategories = async () => {
+    const { data, error } = await supabase.from('categories').select('*');
+    if (!error && data && data.length > 0) {
+        return [{ name: 'All Products', slug: 'all' }, ...data];
+    }
+    return [
+        { name: 'All Products', slug: 'all' },
+        { name: 'Traditional', slug: 'traditional' },
+        { name: 'Modern', slug: 'modern' }
+    ];
+};
+
+const fetchShopProducts = async () => {
+    const { data, error } = await supabase.from('products').select('*');
+    if (!error && data) {
+        return data.map(p => ({
+            ...p,
+            colors: p.colors?.length ? p.colors : ['#000000', '#D1D5DB'],
+            sizes: p.sizes?.length ? p.sizes : ['One Size'],
+            tags: p.tags?.length ? p.tags : (p.onSale ? ['Sale'] : ['New']),
+            rating: p.rating || 5.0,
+            reviews: p.reviews || [],
+            images: p.images?.length ? p.images : ['https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=600&q=80']
+        }));
+    }
+    return [];
+};
+
 function ShopContent() {
     const searchParams = useSearchParams();
     const urlSearchQuery = searchParams.get('search') || '';
@@ -31,10 +61,26 @@ function ShopContent() {
     // Currency Context
     const { convertPrice } = useGlobalCurrency() || { convertPrice: (v) => `$${Number(v).toFixed(2)}` };
 
-    // Data States (Fetched from Supabase)
+    // 🔥 SWR Hooks (Manages Caching and Loading automatically)
+    const { data: swrCategories, isLoading: isLoadingCats } = useSWR('shop_all_categories', fetchShopCategories, {
+        revalidateOnFocus: false,
+        dedupingInterval: 120000 // Cache for 2 minutes
+    });
+
+    const { data: swrProducts, isLoading: isLoadingProds } = useSWR('shop_all_products', fetchShopProducts, {
+        revalidateOnFocus: false,
+        dedupingInterval: 120000 // Cache for 2 minutes
+    });
+
+    // Data States
     const [allProducts, setAllProducts] = useState([]);
-    const [allCategories, setAllCategories] = useState([{ name: 'All Products', slug: 'all' }]);
-    const [loading, setLoading] = useState(true);
+    const allCategories = swrCategories || [{ name: 'All Products', slug: 'all' }];
+    const loading = isLoadingCats || isLoadingProds;
+
+    // Sync SWR cache to local state for Optimistic Updates (like reviews)
+    useEffect(() => {
+        if (swrProducts) setAllProducts(swrProducts);
+    }, [swrProducts]);
 
     // Filtering & View States
     const [category, setCategory] = useState(urlCategoryQuery);
@@ -64,61 +110,6 @@ function ShopContent() {
 
     // Size Guide Modal State
     const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
-
-    // --- FETCH REAL DATA FROM SUPABASE ---
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                setLoading(true);
-
-                // 1. Fetch Categories
-                const { data: categoriesData, error: categoriesError } = await supabase
-                    .from('categories')
-                    .select('*');
-
-                if (categoriesError && categoriesError.code !== '42P01') {
-                    console.error('Category Fetch Error:', categoriesError);
-                }
-
-                if (categoriesData && categoriesData.length > 0) {
-                    setAllCategories([{ name: 'All Products', slug: 'all' }, ...categoriesData]);
-                } else {
-                    setAllCategories([
-                        { name: 'All Products', slug: 'all' },
-                        { name: 'Traditional', slug: 'traditional' },
-                        { name: 'Modern', slug: 'modern' }
-                    ]);
-                }
-
-                // 2. Fetch Products
-                const { data: productsData, error: productsError } = await supabase
-                    .from('products')
-                    .select('*');
-
-                if (productsError) throw productsError;
-
-                if (productsData) {
-                    const formattedProducts = productsData.map(p => ({
-                        ...p,
-                        colors: p.colors?.length ? p.colors : ['#000000', '#D1D5DB'],
-                        sizes: p.sizes?.length ? p.sizes : ['One Size'],
-                        tags: p.tags?.length ? p.tags : (p.onSale ? ['Sale'] : ['New']),
-                        rating: p.rating || 5.0,
-                        reviews: p.reviews || [],
-                        images: p.images?.length ? p.images : ['https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=600&q=80']
-                    }));
-                    setAllProducts(formattedProducts);
-                }
-            } catch (error) {
-                console.error('Error fetching data from Supabase:', error.message);
-                toast.error("Failed to load products from database.");
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchData();
-    }, []);
 
     // Sync URL queries
     useEffect(() => {

@@ -4,16 +4,18 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 const CurrencyContext = createContext(undefined);
 
 export function CurrencyProvider({ children }) {
-    const [currency, setCurrency] = useState('USD');
+    // 🔥 DEFAULT CURRENCY AB 'INR' HAI
+    const [currency, setCurrency] = useState('INR');
     const [rate, setRate] = useState(1);
     const [taxRate, setTaxRate] = useState(0);
-    const [freeShippingThreshold, setFreeShippingThreshold] = useState(100);
+
+    // 🔥 DEFAULT RATES IN INR (Ab admin panel mein direct INR input hoga)
+    const [freeShippingThreshold, setFreeShippingThreshold] = useState(5000);
     const [loading, setLoading] = useState(true);
 
-    // 🔥 NAYE SHIPPING STATES (Default values in USD)
-    const [shippingIndia, setShippingIndia] = useState(15);
-    const [shippingTier1, setShippingTier1] = useState(50);
-    const [shippingRow, setShippingRow] = useState(80);
+    const [shippingIndia, setShippingIndia] = useState(100);
+    const [shippingTier1, setShippingTier1] = useState(2500);
+    const [shippingRow, setShippingRow] = useState(4000);
 
     const symbols = { USD: '$', INR: '₹', EUR: '€', GBP: '£', CAD: 'C$', AUD: 'A$' };
 
@@ -22,9 +24,10 @@ export function CurrencyProvider({ children }) {
         setCurrency(newCurrency);
         localStorage.setItem('userCurrency', newCurrency);
 
-        if (newCurrency !== 'USD') {
+        // 🔥 API BASE CHANGED TO 'INR' (Rupee ke hisaab se convert hoga)
+        if (newCurrency !== 'INR') {
             try {
-                const apiRes = await fetch('https://open.er-api.com/v6/latest/USD');
+                const apiRes = await fetch('https://open.er-api.com/v6/latest/INR');
                 if (apiRes.ok) {
                     const apiData = await apiRes.json();
                     setRate(apiData.rates[newCurrency] || 1);
@@ -33,7 +36,7 @@ export function CurrencyProvider({ children }) {
                 console.error("Failed to fetch new rate", error);
             }
         } else {
-            setRate(1);
+            setRate(1); // Agar INR hai toh rate 1 rahega
         }
         setLoading(false);
     };
@@ -42,9 +45,8 @@ export function CurrencyProvider({ children }) {
         async function initGlobalSettings() {
             try {
                 const dbRes = await fetch('/api/admin/settings');
-
                 let dbData = {};
-                // HTML 404/500 error ko JSON parse hone se bachane ke liye check
+
                 if (dbRes.ok) {
                     dbData = await dbRes.json();
                 } else {
@@ -52,18 +54,43 @@ export function CurrencyProvider({ children }) {
                 }
 
                 setTaxRate(dbData.taxRate || 0);
-                setFreeShippingThreshold(dbData.freeShippingAmount || 100);
-
-                setShippingIndia(dbData.shippingIndia || 15);
-                setShippingTier1(dbData.shippingTier1 || 50);
-                setShippingRow(dbData.shippingRow || 80);
+                // 🔥 Load INR values from DB directly
+                setFreeShippingThreshold(dbData.freeShippingAmount || 5000);
+                setShippingIndia(dbData.shippingIndia || 100);
+                setShippingTier1(dbData.shippingTier1 || 2500);
+                setShippingRow(dbData.shippingRow || 4000);
 
                 const savedCurrency = localStorage.getItem('userCurrency');
-                const targetCurrency = savedCurrency || dbData.defaultCurrency || 'USD';
+                let targetCurrency = savedCurrency;
+
+                // Smart Location tracking
+                if (!savedCurrency) {
+                    try {
+                        const ipRes = await fetch('https://ipapi.co/json/');
+                        if (ipRes.ok) {
+                            const ipData = await ipRes.json();
+                            if (ipData.country_code === 'IN') targetCurrency = 'INR';
+                            else if (ipData.country_code === 'US') targetCurrency = 'USD';
+                            else if (ipData.country_code === 'GB') targetCurrency = 'GBP';
+                            else if (ipData.country_code === 'CA') targetCurrency = 'CAD';
+                            else if (ipData.country_code === 'AU') targetCurrency = 'AUD';
+                            else if (['FR', 'DE', 'IT', 'ES', 'NL'].includes(ipData.country_code)) targetCurrency = 'EUR';
+                            else targetCurrency = dbData.defaultCurrency || 'INR';
+                        } else {
+                            targetCurrency = dbData.defaultCurrency || 'INR';
+                        }
+                    } catch (ipError) {
+                        console.warn("Location fetch failed, using default.", ipError);
+                        targetCurrency = dbData.defaultCurrency || 'INR';
+                    }
+                    localStorage.setItem('userCurrency', targetCurrency);
+                }
+
                 setCurrency(targetCurrency);
 
-                if (targetCurrency !== 'USD') {
-                    const apiRes = await fetch('https://open.er-api.com/v6/latest/USD');
+                // 🔥 Fetch Exchange Rate if target is not INR (Base is INR)
+                if (targetCurrency !== 'INR') {
+                    const apiRes = await fetch('https://open.er-api.com/v6/latest/INR');
                     if (apiRes.ok) {
                         const apiData = await apiRes.json();
                         setRate(apiData.rates[targetCurrency] || 1);
@@ -78,9 +105,9 @@ export function CurrencyProvider({ children }) {
         initGlobalSettings();
     }, []);
 
-    const convertPrice = (baseUsdPrice) => {
-        if (baseUsdPrice === undefined || baseUsdPrice === null) return '';
-        const converted = baseUsdPrice * rate;
+    const convertPrice = (baseInrPrice) => {
+        if (baseInrPrice === undefined || baseInrPrice === null) return '';
+        const converted = baseInrPrice * rate;
         return new Intl.NumberFormat('en-US', {
             style: 'currency',
             currency: currency,
@@ -92,7 +119,7 @@ export function CurrencyProvider({ children }) {
     return (
         <CurrencyContext.Provider value={{
             currency,
-            symbol: symbols[currency] || '$',
+            symbol: symbols[currency] || '₹',
             taxRate,
             freeShippingThreshold,
             exchangeRate: rate,

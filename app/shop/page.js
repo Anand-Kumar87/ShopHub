@@ -8,7 +8,7 @@ import useSWR from 'swr'; // 🔥 SWR Imported for Light-Speed Caching
 import {
     FiHeart, FiShoppingBag, FiTruck, FiRefreshCcw,
     FiShield, FiMapPin, FiArrowRight, FiX, FiStar, FiFilter,
-    FiMinus, FiPlus, FiList, FiMessageSquare, FiEye // 🔥 FiEye जोड़ें
+    FiMinus, FiPlus, FiList, FiGrid, FiMessageSquare, FiEye
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 

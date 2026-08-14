@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation'; // 🔥 useRouter added
 import Image from 'next/image';
 import Link from 'next/link';
 import useSWR from 'swr'; // 🔥 SWR Imported for Light-Speed Caching
 import {
-    FiHeart, FiX, FiStar, FiFilter, FiMinus, FiPlus,
-    FiGrid, FiList, FiMessageSquare
+    FiHeart, FiShoppingBag, FiTruck, FiRefreshCcw,
+    FiShield, FiMapPin, FiArrowRight, FiX, FiStar,
+    FiMinus, FiPlus, FiMessageSquare, FiEye // 🔥 FiEye जोड़ें
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
@@ -52,6 +53,7 @@ const fetchShopProducts = async () => {
 };
 
 function ShopContent() {
+    const router = useRouter(); // 🔥 Router initialized for product page redirect
     const searchParams = useSearchParams();
     const urlSearchQuery = searchParams.get('search') || '';
     const urlCategoryQuery = searchParams.get('category') || 'all';
@@ -384,7 +386,7 @@ function ShopContent() {
                                         <div
                                             key={product.id}
                                             className={`group cursor-pointer flex ${viewMode === 'list' ? 'flex-row gap-8 items-center border-b border-stone-100 pb-8' : 'flex-col relative'}`}
-                                            onClick={() => { setSelectedProduct(product); setModalQuantity(1); }}
+                                            onClick={() => router.push(`/product/${product.id}`)} /* 🔥 FIX: Redirects to Product Page */
                                         >
                                             {/* Image Container with Hover Flip Effect */}
                                             <div className={`relative bg-stone-100 rounded-xl overflow-hidden ${viewMode === 'list' ? 'w-1/3 aspect-square' : 'aspect-[3/4] mb-5'}`}>
@@ -417,11 +419,18 @@ function ShopContent() {
 
                                                 {/* Wishlist Button */}
                                                 <button
-                                                    onClick={(e) => handleWishlist(e, product)}
-                                                    className={`absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-sm rounded-full transition-all ${isWishlisted ? 'text-red-500 opacity-100' : 'text-stone-400 hover:text-red-500'
-                                                        } ${viewMode === 'grid' && !isWishlisted ? 'opacity-0 group-hover:opacity-100' : ''}`}
+                                                    onClick={(e) => { e.stopPropagation(); handleWishlist(e, product); }}
+                                                    className={`absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-sm rounded-full transition-all ${isWishlisted ? 'text-red-500 opacity-100' : 'text-stone-400 hover:text-red-500'} ${viewMode === 'grid' && !isWishlisted ? 'opacity-0 group-hover:opacity-100' : ''}`}
                                                 >
                                                     <FiHeart size={16} className={isWishlisted ? 'fill-current' : ''} />
+                                                </button>
+
+                                                {/* 🔥 NEW: Premium Quick View (Eye) Icon for Shop Page */}
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setSelectedProduct(product); setModalQuantity(1); }}
+                                                    className={`absolute top-12 right-3 p-2 bg-white/90 backdrop-blur-sm rounded-full text-stone-400 hover:text-stone-900 hover:bg-white transition-all duration-300 z-10 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0`}
+                                                >
+                                                    <FiEye size={16} />
                                                 </button>
                                             </div>
 

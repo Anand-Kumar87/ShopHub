@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { FiBookOpen, FiCheckCircle, FiCopy, FiArrowRight, FiShield, FiMail } from 'react-icons/fi';
 import toast from 'react-hot-toast';
-import MagneticButton from '@/components/MagneticButton'; // अगर आपका path अलग हो तो एडजस्ट कर लें (उदा: '../components/MagneticButton')
+import MagneticButton from '../components/MagneticButton';
 
 export default function StudentPortal() {
     const [email, setEmail] = useState('');

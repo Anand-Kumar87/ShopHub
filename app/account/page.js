@@ -27,7 +27,7 @@ const safeDate = (dateString) => {
     return isNaN(d.getTime()) ? 'Pending / Not Set' : d.toLocaleString('en-IN', {
         day: 'numeric', month: 'short', year: 'numeric',
         hour: '2-digit', minute: '2-digit', hour12: true
-    }).toUpperCase(); 
+    }).toUpperCase();
 };
 
 const getExpectedDelivery = (orderDateString, currentStatus) => {
@@ -102,7 +102,18 @@ export default function AccountPage() {
                 const userEmail = session.user.email;
                 const existingLocalData = JSON.parse(localStorage.getItem('currentUser')) || {};
 
-                const { data: dbProfile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+                // 🔥 OPTIMIZATION: PARALLEL DATA FETCHING FOR LIGHT-SPEED LOADING
+                const [
+                    { data: dbProfile },
+                    { data: dbPayments },
+                    { data: dbOrders },
+                    { data: fetchedCoupons }
+                ] = await Promise.all([
+                    supabase.from('profiles').select('*').eq('id', session.user.id).single(),
+                    supabase.from('user_payments').select('*').eq('user_id', session.user.id).order('created_at', { ascending: true }),
+                    supabase.from('orders').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false }),
+                    supabase.from('coupons').select('*')
+                ]);
 
                 let fName = dbProfile?.first_name || existingLocalData.firstName;
                 let lName = dbProfile?.last_name || existingLocalData.lastName;
@@ -112,12 +123,6 @@ export default function AccountPage() {
                     fName = userName.split(' ')[0];
                     lName = userName.split(' ').slice(1).join(' ') || '';
                 }
-
-                const { data: dbPayments } = await supabase
-                    .from('user_payments')
-                    .select('*')
-                    .eq('user_id', session.user.id)
-                    .order('created_at', { ascending: true });
 
                 currentUserData = {
                     id: session.user.id,
@@ -131,7 +136,6 @@ export default function AccountPage() {
                 localStorage.setItem('currentUser', JSON.stringify(currentUserData));
                 window.dispatchEvent(new Event('userStateChange'));
 
-                const { data: dbOrders } = await supabase.from('orders').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false });
                 const localOrders = JSON.parse(localStorage.getItem('shophub_orders')) || [];
                 const userLocalOrders = localOrders.filter(o => o.shipping?.email === userEmail || o.email === userEmail);
 
@@ -143,7 +147,6 @@ export default function AccountPage() {
 
                 setOrders(combinedOrders);
 
-                const { data: fetchedCoupons } = await supabase.from('coupons').select('*');
                 if (fetchedCoupons) {
                     const sortedCoupons = fetchedCoupons.sort((a, b) => a.discount - b.discount);
                     setAllDbCoupons(sortedCoupons);
@@ -823,7 +826,7 @@ export default function AccountPage() {
                                     <h4 className="text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-4">Summary</h4>
                                     <div className="space-y-3 text-sm bg-stone-50 p-5 rounded-xl border border-stone-100">
                                         <div className="flex justify-between text-stone-500">
-                                            <span>Subtotal</span> 
+                                            <span>Subtotal</span>
                                             <span className="font-medium text-stone-900">{convertPrice(safePrice(selectedOrder.subtotal || selectedOrder.totals?.subtotal))}</span>
                                         </div>
 
@@ -836,15 +839,15 @@ export default function AccountPage() {
                                         )}
 
                                         <div className="flex justify-between text-stone-500">
-                                            <span>Shipping</span> 
+                                            <span>Shipping</span>
                                             <span className="font-medium text-stone-900">{convertPrice(safePrice(selectedOrder.shipping || selectedOrder.totals?.shipping))}</span>
                                         </div>
                                         <div className="flex justify-between text-stone-500">
-                                            <span>Tax</span> 
+                                            <span>Tax</span>
                                             <span className="font-medium text-stone-900">{convertPrice(safePrice(selectedOrder.tax || selectedOrder.totals?.tax))}</span>
                                         </div>
                                         <div className="flex justify-between pt-3 border-t border-stone-200 mt-2 font-bold">
-                                            <span className="text-stone-900">Total</span> 
+                                            <span className="text-stone-900">Total</span>
                                             <span className="text-stone-900">{convertPrice(safePrice(selectedOrder.total_amount || selectedOrder.total || selectedOrder.totals?.total))}</span>
                                         </div>
                                     </div>

@@ -3,12 +3,13 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation'; // 🔥 Router added for redirection
 import { supabase } from './utils/supabase'; // 🔥 Real Database Connection
 import useSWR from 'swr'; // 🔥 SWR for Light-Speed Data Caching
 import {
   FiHeart, FiShoppingBag, FiTruck, FiRefreshCcw,
   FiShield, FiMapPin, FiArrowRight, FiX, FiStar,
-  FiMinus, FiPlus, FiMessageSquare
+  FiMinus, FiPlus, FiMessageSquare, FiEye // 🔥 FiEye added
 } from 'react-icons/fi';
 import { useCart } from './context/CartContext';
 import { useWishlist } from './context/WishlistContext';
@@ -36,6 +37,7 @@ const fetchProducts = async () => {
 };
 
 export default function Home() {
+  const router = useRouter(); // 🔥 Initialize Router
   const { addToCart } = useCart();
 
   // 🔥 Real Wishlist & Currency Hooks
@@ -43,14 +45,14 @@ export default function Home() {
   const { convertPrice } = useGlobalCurrency() || { convertPrice: (v) => `$${Number(v).toFixed(2)}` };
 
   // 🔥 SWR Hooks for caching and instant loading
-  const { data: swrCategories, isLoading: isLoadingCats } = useSWR('home_categories', fetchCategories, {
-    revalidateOnFocus: false,
-    dedupingInterval: 60000 // Cache for 1 minute
+  const { data: swrCategories, isLoading: isLoadingCats } = useSWR('home_categories', fetchCategories, { 
+      revalidateOnFocus: false, 
+      dedupingInterval: 60000 // Cache for 1 minute
   });
-
-  const { data: swrProducts, isLoading: isLoadingProds } = useSWR('home_products', fetchProducts, {
-    revalidateOnFocus: false,
-    dedupingInterval: 60000
+  
+  const { data: swrProducts, isLoading: isLoadingProds } = useSWR('home_products', fetchProducts, { 
+      revalidateOnFocus: false,
+      dedupingInterval: 60000 
   });
 
   const [categories, setCategories] = useState([]);
@@ -355,7 +357,7 @@ export default function Home() {
                 <div
                   key={product.id}
                   className="group flex flex-col relative cursor-pointer"
-                  onClick={() => { setSelectedProduct(product); setModalQuantity(1); }}
+                  onClick={() => router.push(`/product/${product.id}`)} /* 🔥 FIX: Redirects to Product Page */
                 >
                   <div className="relative aspect-[3/4] w-full bg-stone-100 rounded-xl overflow-hidden mb-4 block">
                     <div className="absolute inset-0 z-0">
@@ -369,10 +371,18 @@ export default function Home() {
                     </div>
 
                     <button
-                      onClick={(e) => handleWishlistToggle(e, product)}
+                      onClick={(e) => { e.stopPropagation(); handleWishlistToggle(e, product); }}
                       className={`absolute top-3 right-3 p-2.5 bg-white/90 backdrop-blur-sm shadow-sm rounded-full transition-all z-10 ${inWishlist ? 'text-red-500' : 'text-stone-400 hover:text-red-500 hover:bg-white'}`}
                     >
                       <FiHeart className={inWishlist ? "fill-current" : ""} />
+                    </button>
+
+                    {/* 🔥 NEW: Premium Quick View (Eye) Icon with Hover Animation */}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setSelectedProduct(product); setModalQuantity(1); }}
+                      className="absolute top-14 right-3 p-2.5 bg-white/90 backdrop-blur-sm shadow-sm rounded-full text-stone-400 hover:text-stone-900 hover:bg-white transition-all z-10 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 duration-300"
+                    >
+                      <FiEye size={16} />
                     </button>
 
                     <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out z-10">

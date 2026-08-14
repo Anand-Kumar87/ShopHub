@@ -4,10 +4,11 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { supabase } from './utils/supabase'; // 🔥 Real Database Connection
+import useSWR from 'swr'; // 🔥 SWR for Light-Speed Data Caching
 import {
   FiHeart, FiShoppingBag, FiTruck, FiRefreshCcw,
   FiShield, FiMapPin, FiArrowRight, FiX, FiStar,
-  FiMinus, FiPlus, FiMessageSquare, FiEye // 🔥 Added FiEye for Quick View
+  FiMinus, FiPlus, FiMessageSquare
 } from 'react-icons/fi';
 import { useCart } from './context/CartContext';
 import { useWishlist } from './context/WishlistContext';
@@ -17,6 +18,23 @@ import { useGlobalCurrency } from './context/CurrencyContext';
 // 🔥 Magic button Import 
 import MagneticButton from './components/MagneticButton';
 
+// 🔥 SWR Fetcher Functions (With Limits for Speed)
+const fetchCategories = async () => {
+  const { data, error } = await supabase.from('categories').select('*').limit(10);
+  if (!error && data && data.length > 0) return data;
+  return JSON.parse(localStorage.getItem('shophub_categories')) || [];
+};
+
+const fetchProducts = async () => {
+  const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false }).limit(20);
+  const rawProducts = data && !error ? data : (JSON.parse(localStorage.getItem('shophub_products')) || []);
+  const activeProducts = rawProducts.filter(p => p.status !== 'archived' && p.status !== 'draft');
+  return activeProducts.slice(0, 4).map(p => ({
+    ...p,
+    images: p.images || (p.image ? [p.image] : [])
+  }));
+};
+
 export default function Home() {
   const { addToCart } = useCart();
 
@@ -24,11 +42,31 @@ export default function Home() {
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist() || { isInWishlist: () => false };
   const { convertPrice } = useGlobalCurrency() || { convertPrice: (v) => `$${Number(v).toFixed(2)}` };
 
+  // 🔥 SWR Hooks for caching and instant loading
+  const { data: swrCategories, isLoading: isLoadingCats } = useSWR('home_categories', fetchCategories, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60000 // Cache for 1 minute
+  });
+
+  const { data: swrProducts, isLoading: isLoadingProds } = useSWR('home_products', fetchProducts, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60000
+  });
+
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
 
   // 🔥 Added Loading State for Skeleton UI
-  const [isLoadingData, setIsLoadingData] = useState(true);
+  const isLoadingData = isLoadingCats || isLoadingProds;
+
+  // Sync SWR cache with local state to preserve Optimistic UI updates
+  useEffect(() => {
+    if (swrCategories) setCategories(swrCategories);
+  }, [swrCategories]);
+
+  useEffect(() => {
+    if (swrProducts) setProducts(swrProducts);
+  }, [swrProducts]);
 
   // 🔥 Modal (Quick View) States
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -45,49 +83,6 @@ export default function Home() {
   // 🔥 NEW: Size Guide Modal State
   const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
 
-  // 🔥 Fetch ONLY Real Data from Database (No Fake Products)
-  useEffect(() => {
-    const fetchHomeData = async () => {
-      setIsLoadingData(true); // Start loading
-
-      // 1. Fetch Real Products from Database
-      const { data: dbProducts, error: prodError } = await supabase
-        .from('products')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (!prodError && dbProducts && dbProducts.length > 0) {
-        const activeProducts = dbProducts.filter(p => p.status !== 'archived' && p.status !== 'draft');
-        setProducts(
-          activeProducts.slice(0, 4).map(p => ({
-            ...p,
-            images: p.images || (p.image ? [p.image] : [])
-          }))
-        );
-      } else {
-        const localProducts = JSON.parse(localStorage.getItem('shophub_products')) || [];
-        const activeProducts = localProducts.filter(p => p.status !== 'archived' && p.status !== 'draft');
-        setProducts(activeProducts.slice(0, 4));
-      }
-
-      // 2. Fetch Real Categories from Database
-      const { data: dbCategories, error: catError } = await supabase
-        .from('categories')
-        .select('*');
-
-      if (!catError && dbCategories && dbCategories.length > 0) {
-        setCategories(dbCategories);
-      } else {
-        const localCategories = JSON.parse(localStorage.getItem('shophub_categories')) || [];
-        setCategories(localCategories);
-      }
-
-      setIsLoadingData(false); // End loading
-    };
-
-    fetchHomeData();
-  }, []);
-
   // Reset modal states when a new product is selected
   useEffect(() => {
     if (selectedProduct) {
@@ -102,10 +97,7 @@ export default function Home() {
 
   // Action Handlers
   const handleAddToCart = (e, product, qty = 1) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
+    if (e) e.stopPropagation();
     const cartItem = { ...product };
     addToCart(cartItem, qty);
     toast.success(
@@ -119,10 +111,7 @@ export default function Home() {
   };
 
   const handleWishlistToggle = (e, product) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
+    if (e) e.stopPropagation();
     if (isInWishlist(product.id)) {
       removeFromWishlist(product.id);
       toast.success(`${product.name} removed from wishlist`, { icon: '💔' });
@@ -363,11 +352,10 @@ export default function Home() {
             products.map((product) => {
               const inWishlist = isInWishlist(product.id);
               return (
-                // 🔥 NEW: Wrapped entire card in Link for redirect on click
-                <Link
+                <div
                   key={product.id}
-                  href={`/product/${product.id}`}
                   className="group flex flex-col relative cursor-pointer"
+                  onClick={() => { setSelectedProduct(product); setModalQuantity(1); }}
                 >
                   <div className="relative aspect-[3/4] w-full bg-stone-100 rounded-xl overflow-hidden mb-4 block">
                     <div className="absolute inset-0 z-0">
@@ -380,28 +368,12 @@ export default function Home() {
                       />
                     </div>
 
-                    {/* 🔥 NEW: Added Quick View Button alongside Wishlist */}
-                    <div className="absolute top-3 right-3 flex flex-col gap-2 z-10">
-                      <button
-                        onClick={(e) => handleWishlistToggle(e, product)}
-                        className={`p-2.5 bg-white/90 backdrop-blur-sm shadow-sm rounded-full transition-all ${inWishlist ? 'text-red-500' : 'text-stone-400 hover:text-red-500 hover:bg-white'}`}
-                      >
-                        <FiHeart size={16} className={inWishlist ? "fill-current" : ""} />
-                      </button>
-                      
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setSelectedProduct(product);
-                          setModalQuantity(1);
-                        }}
-                        className="p-2.5 bg-white/90 backdrop-blur-sm text-stone-400 hover:text-stone-900 rounded-full transition-all duration-300 shadow-sm flex items-center justify-center lg:opacity-0 lg:group-hover:opacity-100"
-                        aria-label="Quick View"
-                      >
-                        <FiEye size={16} />
-                      </button>
-                    </div>
+                    <button
+                      onClick={(e) => handleWishlistToggle(e, product)}
+                      className={`absolute top-3 right-3 p-2.5 bg-white/90 backdrop-blur-sm shadow-sm rounded-full transition-all z-10 ${inWishlist ? 'text-red-500' : 'text-stone-400 hover:text-red-500 hover:bg-white'}`}
+                    >
+                      <FiHeart className={inWishlist ? "fill-current" : ""} />
+                    </button>
 
                     <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out z-10">
                       <button
@@ -434,7 +406,7 @@ export default function Home() {
                       ))}
                     </div>
                   )}
-                </Link>
+                </div>
               );
             })
           ) : (

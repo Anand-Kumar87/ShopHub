@@ -13,6 +13,16 @@ import {
     FiCreditCard, FiSmartphone, FiBriefcase, FiTruck // 🔥 बस यहाँ FiTruck जोड़ना है
 } from 'react-icons/fi';
 
+
+// Country Name Mapper
+const COUNTRY_MAP = {
+    'IN': 'India', 'US': 'United States', 'GB': 'United Kingdom', 'CA': 'Canada',
+    'AU': 'Australia', 'FR': 'France', 'DE': 'Germany', 'IT': 'Italy',
+    'ES': 'Spain', 'NL': 'Netherlands', 'SE': 'Sweden', 'CH': 'Switzerland',
+    'AE': 'United Arab Emirates', 'SG': 'Singapore', 'JP': 'Japan',
+    'NZ': 'New Zealand', 'ZA': 'South Africa', 'MX': 'Mexico', 'BR': 'Brazil',
+    'ROW': 'Rest of the World'
+};
 // Helper for generating IDs safely
 const generateId = () => typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
 
@@ -1480,7 +1490,7 @@ export default function AdminDashboard() {
 
             {/* ORDER PREVIEW MODAL */}
             {isOrderModalOpen && selectedOrder && (
-                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 flex items-start justify-center p-4 pt-16 animate-fade-in">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[95vh]">
                         <div className="px-8 py-5 border-b border-stone-100 flex justify-between items-center bg-stone-50/50 sticky top-0 z-10">
                             <div>
@@ -1533,7 +1543,7 @@ export default function AdminDashboard() {
                                         <p className="text-xs text-stone-600 leading-relaxed">
                                             {selectedOrder.shippingAddress || selectedOrder.shipping_address?.street || selectedOrder.shipping?.address || 'No address provided'} <br />
                                             {selectedOrder.city || selectedOrder.shipping_address?.city || selectedOrder.shipping?.city}, {selectedOrder.state || selectedOrder.shipping_address?.state || selectedOrder.shipping?.state} {selectedOrder.postalCode || selectedOrder.shipping_address?.zipCode || selectedOrder.shipping?.postalCode} <br />
-                                            {selectedOrder.country || selectedOrder.shipping_address?.country || selectedOrder.shipping?.country}
+                                            {COUNTRY_MAP[selectedOrder.country || selectedOrder.shipping_address?.country || selectedOrder.shipping?.country] || (selectedOrder.country || selectedOrder.shipping_address?.country || selectedOrder.shipping?.country)}
                                         </p>
                                     </div>
                                 </div>

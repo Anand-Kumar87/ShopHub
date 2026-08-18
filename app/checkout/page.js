@@ -38,7 +38,7 @@ export default function CheckoutPage() {
     const [adminSettings, setAdminSettings] = useState({
         enableStripe: true, enableRazorpay: true, enableManualBank: true, razorpayKeyId: ''
     });
-    const [dbSettings, setDbSettings] = useState(null); // 🔥 To hold exact database values
+    const [dbSettings, setDbSettings] = useState(null);
 
     // Form States
     const [formData, setFormData] = useState({
@@ -61,7 +61,7 @@ export default function CheckoutPage() {
 
     // Modal & Processing States
     const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
-    const [finalOrder, setFinalOrder] = useState(null); // 🔥 FIX: To store exact order details for Success Modal
+    const [finalOrder, setFinalOrder] = useState(null);
     const [isProcessingPayment, setIsProcessingPayment] = useState(false);
     const [paymentError, setPaymentError] = useState('');
 
@@ -71,10 +71,8 @@ export default function CheckoutPage() {
 
         const checkAuthAndFetchSettings = async () => {
             let localUser = JSON.parse(localStorage.getItem('currentUser'));
-            // 🔥 FIX: Get real session from Supabase to prevent Infinite Redirect Loops
             const { data: { session } } = await supabase.auth.getSession();
 
-            // 🔥 FIX: OVERRIDE BUG. If a new session exists but doesn't match local storage, overwrite it!
             if (session) {
                 if (!localUser || localUser.email !== session.user.email) {
                     const userObj = {
@@ -84,22 +82,21 @@ export default function CheckoutPage() {
                         lastName: session.user.user_metadata?.last_name || '',
                     };
                     localStorage.setItem('currentUser', JSON.stringify(userObj));
-                    localUser = userObj; // Update our local variable for the form
-                    window.dispatchEvent(new Event('userStateChange')); // Update Header instantly
+                    localUser = userObj;
+                    window.dispatchEvent(new Event('userStateChange'));
                 }
             }
 
             if (!session && (!localUser || !localUser.email)) {
                 toast.error('Please verify your email to securely place your order.', {
-                    id: 'auth-guard', // Prevents toast spamming
+                    id: 'auth-guard',
                     icon: '🔒',
                     style: { background: '#1c1917', color: '#fff' }
                 });
-                router.replace('/checkout-login?redirect=/checkout'); // Use replace instead of push
+                router.replace('/checkout-login?redirect=/checkout');
                 return;
             }
 
-            // Fill form with correct user data
             setFormData(prev => ({
                 ...prev,
                 email: localUser.email,
@@ -107,9 +104,8 @@ export default function CheckoutPage() {
                 lastName: localUser.lastName || ''
             }));
 
-            setIsCheckingAuth(false); // 🔥 Unlock the UI (Stops the loading screen)
+            setIsCheckingAuth(false);
 
-            // Fetch Admin Gateway Settings from Real Database
             try {
                 const { data: dbData, error } = await supabase.from('admin_settings').select('*').single();
 
@@ -135,7 +131,6 @@ export default function CheckoutPage() {
         checkAuthAndFetchSettings();
     }, [router]);
 
-    // Change default payment method based on country
     useEffect(() => {
         if (formData.country === 'IN' && adminSettings.enableRazorpay) {
             setPaymentMethod('razorpay');
@@ -144,7 +139,6 @@ export default function CheckoutPage() {
         }
     }, [formData.country, adminSettings]);
 
-    // Load Razorpay Script
     const loadRazorpayScript = () => {
         return new Promise((resolve) => {
             const script = document.createElement('script');
@@ -155,26 +149,67 @@ export default function CheckoutPage() {
         });
     };
 
-    // --- COUPON LOGIC ---
-    const handleApplyCoupon = () => {
+    // 🔥 FIX: ADVANCED COUPON LOGIC (Expiry, Single-Use, Student Verification)
+    const handleApplyCoupon = async () => {
         if (!couponCode.trim()) return;
+        const codeToApply = couponCode.trim().toUpperCase();
 
-        const adminCoupons = JSON.parse(localStorage.getItem('shophub_admin_coupons')) || [
-            { code: 'FESTIVAL20', discount: 20, type: 'percent' },
-            { code: 'FLAT50', discount: 50, type: 'fixed' },
-            { code: 'WELCOME10', discount: 10, type: 'percent' }
-        ];
+        // 1. Student Code Restriction Logic
+        if (codeToApply === 'STUDENT10') {
+            const emailLower = formData.email.toLowerCase();
+            const isStudent = emailLower.endsWith('.edu') || emailLower.endsWith('.ac.in') || emailLower.endsWith('.edu.in');
+            if (!isStudent) {
+                toast.error('STUDENT10 code is exclusively for verified student emails (.edu or .ac.in).', { icon: '🎓' });
+                return;
+            }
+        }
 
-        const validCoupon = adminCoupons.find(c => c.code.toUpperCase() === couponCode.trim().toUpperCase());
+        try {
+            // 2. Fetch from Database
+            const { data: dbCoupons, error } = await supabase.from('coupons').select('*').eq('code', codeToApply);
+            let validCoupon = dbCoupons?.[0];
 
-        if (validCoupon) {
+            // Fallback to local admin coupons if DB fails
+            if (!validCoupon) {
+                const adminCoupons = JSON.parse(localStorage.getItem('shophub_admin_coupons')) || [
+                    { code: 'FESTIVAL20', discount: 20, type: 'percent' },
+                    { code: 'FLAT50', discount: 50, type: 'fixed' },
+                    { code: 'WELCOME10', discount: 10, type: 'percent' },
+                    { code: 'STUDENT10', discount: 10, type: 'percent' } // Added STUDENT10 to fallback
+                ];
+                validCoupon = adminCoupons.find(c => c.code.toUpperCase() === codeToApply);
+            }
+
+            if (!validCoupon) {
+                toast.error('Invalid promo code.');
+                return;
+            }
+
+            // 3. Check Expiry Date
+            if (validCoupon.expires_at) {
+                const expiryDate = new Date(validCoupon.expires_at);
+                if (expiryDate < new Date()) {
+                    toast.error('This promo code has expired.');
+                    return;
+                }
+            }
+
+            // 4. Single-Use Check (Verify if user has used this coupon in past orders)
+            const { data: pastOrders } = await supabase.from('orders').select('id').eq('email', formData.email).eq('coupon', codeToApply);
+            if (pastOrders && pastOrders.length > 0) {
+                toast.error('You have already used this promo code. It can only be used once per user.');
+                return;
+            }
+
+            // If all checks pass
             setAppliedCoupon(validCoupon);
             toast.success(`Awesome! You unlocked ${validCoupon.type === 'percent' ? `${validCoupon.discount}%` : convertPrice(validCoupon.discount)} off.`);
             setShowCelebration(true);
             setTimeout(() => setShowCelebration(false), 4000);
             setCouponCode('');
-        } else {
-            toast.error('Invalid or expired promo code.');
+
+        } catch (err) {
+            toast.error('Error verifying coupon. Please try again.');
         }
     };
 
@@ -182,39 +217,31 @@ export default function CheckoutPage() {
         setAppliedCoupon(null);
     };
 
-    // --- 🔥 SMART DYNAMIC CALCULATIONS ---
+    // --- SMART DYNAMIC CALCULATIONS ---
     const rawSubtotal = getTotalPrice ? getTotalPrice() : 0;
-
-    // Convert raw tax value correctly (If admin inputs 5, it means 5%, so 0.05)
     const rawTaxFromDB = dbSettings?.taxRate ?? contextTaxRate ?? 8;
     const actualTaxRate = rawTaxFromDB > 1 ? rawTaxFromDB / 100 : rawTaxFromDB;
     const TAX_RATE = actualTaxRate;
 
-    // Extract exact shipping rates from DB and multiply by currency exchange rate
     const effectiveFreeShipping = (dbSettings?.freeShippingAmount ?? freeShippingThreshold) * exchangeRate;
     const effectiveShippingIN = (dbSettings?.shippingIndia ?? shippingIndia) * exchangeRate;
     const effectiveShippingTier1 = (dbSettings?.shippingTier1 ?? shippingTier1) * exchangeRate;
     const effectiveShippingRow = (dbSettings?.shippingRow ?? shippingRow) * exchangeRate;
 
-    // 🔥 SMART SHIPPING LOGIC BASED ON COUNTRY
     let SHIPPING_COST = 0;
-    const tier1Countries = ['US', 'GB', 'CA', 'AU', 'DE', 'FR', 'IT', 'ES', 'NL']; // Add major EU countries here
+    const tier1Countries = ['US', 'GB', 'CA', 'AU', 'DE', 'FR', 'IT', 'ES', 'NL'];
 
     if (formData.country === 'IN') {
-        // Free shipping ONLY applies to India
         if (rawSubtotal >= effectiveFreeShipping) {
             SHIPPING_COST = 0;
         } else {
             SHIPPING_COST = effectiveShippingIN;
         }
     } else if (tier1Countries.includes(formData.country)) {
-        // Tier 1 rates (No free shipping)
         SHIPPING_COST = effectiveShippingTier1;
     } else if (formData.country) {
-        // Rest of the World (No free shipping)
         SHIPPING_COST = effectiveShippingRow;
     } else {
-        // Fallback if no country selected
         SHIPPING_COST = effectiveShippingIN;
     }
 
@@ -224,7 +251,7 @@ export default function CheckoutPage() {
         if (appliedCoupon.type === 'percent') {
             discountAmount = rawSubtotal * (appliedCoupon.discount / 100);
         } else {
-            discountAmount = appliedCoupon.discount * exchangeRate; // Convert fixed discount to local currency
+            discountAmount = appliedCoupon.discount * exchangeRate;
         }
     }
     discountAmount = Math.min(discountAmount, rawSubtotal);
@@ -238,7 +265,7 @@ export default function CheckoutPage() {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    // --- ORDER SUBMISSION & PAYMENT GATEWAY TRIGGERS ---
+    // --- ORDER SUBMISSION ---
     const handlePlaceOrder = async (e) => {
         e.preventDefault();
         setPaymentError('');
@@ -254,7 +281,6 @@ export default function CheckoutPage() {
 
         setIsProcessingPayment(true);
 
-        // Generate Sequential ID
         const existingOrders = JSON.parse(localStorage.getItem('shophub_orders')) || [];
         let nextIdNum = 1;
         if (existingOrders.length > 0) {
@@ -267,7 +293,6 @@ export default function CheckoutPage() {
         }
         const generatedOrderNumber = `ORD-${String(nextIdNum).padStart(5, '0')}`;
 
-        // Extract specific payment details
         const paymentDetails = {
             method: paymentMethod,
             ...(paymentMethod === 'upi' && { upiId: formData.upiId }),
@@ -287,7 +312,8 @@ export default function CheckoutPage() {
             customerName: `${formData.firstName} ${formData.lastName}`.trim(),
             email: formData.email,
             items: cartItems,
-            shipping: {
+            // 🔥 FIX: Renamed 'shipping' to 'shipping_address' to prevent conflict with shipping cost in DB
+            shipping_address: {
                 firstName: formData.firstName,
                 lastName: formData.lastName,
                 email: formData.email,
@@ -298,6 +324,7 @@ export default function CheckoutPage() {
                 postalCode: formData.postalCode,
                 country: formData.country,
             },
+            shipping_cost: SHIPPING_COST, // 🔥 Explicit Cost
             payment_method: paymentMethod,
             payment_details: paymentDetails,
             coupon: appliedCoupon ? appliedCoupon.code : null,
@@ -313,59 +340,40 @@ export default function CheckoutPage() {
             currency: currency
         };
 
-        // 🔥 FIX: Convert to accurate Local Currency Value for Payment Gateways
         const localFinalTotal = orderTotal * exchangeRate;
 
-        // 🔥 MINIMUM AMOUNT BYPASS (Razorpay requires minimum 1 INR)
         if (localFinalTotal < 1) {
-            toast.success("Order placed successfully! (Minimum amount bypassed)");
             orderPayload.paymentStatus = 'Paid';
             await executeOrderSave(orderPayload, existingOrders);
             return;
         }
 
         try {
-            // 1. STRIPE FLOW (For Cards)
             if (paymentMethod === 'stripe') {
                 const res = await fetch('/api/checkout/stripe', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        ...orderPayload,
-                        total_amount: localFinalTotal // Send Converted Amount
-                    })
+                    body: JSON.stringify({ ...orderPayload, total_amount: localFinalTotal })
                 });
                 const data = await res.json();
-
                 if (!res.ok) throw new Error(data.error || "Stripe API error");
-
                 if (data.url) {
                     window.location.href = data.url;
                 } else {
                     throw new Error("Stripe API Route not found. Please setup backend.");
                 }
-            }
-
-            // 2. RAZORPAY FLOW (For UPI / Indian Cards)
-            else if (paymentMethod === 'razorpay') {
+            } else if (paymentMethod === 'razorpay') {
                 const res = await loadRazorpayScript();
                 if (!res) throw new Error("Razorpay SDK failed to load.");
 
                 const apiRes = await fetch('/api/checkout/razorpay', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        ...orderPayload,
-                        total_amount: localFinalTotal // 🔥 Send Converted Amount
-                    })
+                    body: JSON.stringify({ ...orderPayload, total_amount: localFinalTotal })
                 });
 
                 const data = await apiRes.json();
-
-                if (!apiRes.ok) {
-                    throw new Error(data.error || "Backend API Error: Check Razorpay settings.");
-                }
-
+                if (!apiRes.ok) throw new Error(data.error || "Backend API Error: Check Razorpay settings.");
                 if (!data.orderId) throw new Error("Invalid response from Razorpay backend.");
 
                 const options = {
@@ -380,11 +388,7 @@ export default function CheckoutPage() {
                         orderPayload.razorpay_payment_id = response.razorpay_payment_id;
                         await executeOrderSave(orderPayload, existingOrders);
                     },
-                    prefill: {
-                        name: orderPayload.customerName,
-                        email: orderPayload.email,
-                        contact: formData.phone
-                    },
+                    prefill: { name: orderPayload.customerName, email: orderPayload.email, contact: formData.phone },
                     theme: { color: "#1c1917" }
                 };
 
@@ -394,15 +398,10 @@ export default function CheckoutPage() {
                     setIsProcessingPayment(false);
                 });
                 paymentObject.open();
-            }
-
-            // 3. Cash on Delivery (COD) FLOW
-            else if (paymentMethod === 'cod') {
+            } else if (paymentMethod === 'cod') {
                 orderPayload.paymentStatus = 'Unpaid';
                 setTimeout(async () => await executeOrderSave(orderPayload, existingOrders), 1000);
-            }
-            // 4. MANUAL FLOW (Bank / Direct UPI ID)
-            else {
+            } else {
                 orderPayload.paymentStatus = 'Unpaid';
                 setTimeout(async () => await executeOrderSave(orderPayload, existingOrders), 1500);
             }
@@ -413,7 +412,6 @@ export default function CheckoutPage() {
             toast.error(error.message);
             setIsProcessingPayment(false);
 
-            // DEV FALLBACK
             if (error.message.includes('API Route not found') || error.message.includes('Unexpected token')) {
                 toast.error("Falling back to manual order.");
                 orderPayload.paymentStatus = 'Unpaid';
@@ -429,12 +427,14 @@ export default function CheckoutPage() {
         try {
             const { data: { session } } = await supabase.auth.getSession();
 
+            // 🔥 FIX: Properly map the shipping payload to prevent Account Page '0' error
             const dbPayload = {
                 orderNumber: orderPayload.orderNumber,
                 customerName: orderPayload.customerName,
                 email: orderPayload.email,
                 items: orderPayload.items,
-                shipping: orderPayload.shipping,
+                shipping_address: orderPayload.shipping_address, // Real address object
+                shipping: orderPayload.shipping_cost, // Explicit Number for Cost Display
                 payment_method: orderPayload.payment_method,
                 payment_details: orderPayload.payment_details,
                 paymentStatus: orderPayload.paymentStatus || 'Unpaid',
@@ -452,29 +452,28 @@ export default function CheckoutPage() {
                 console.error("Supabase Save Error Details:", error.message || error);
                 toast.error("Cloud Save Failed. Check DB Columns.");
             } else {
-                toast.success("Order synced to Real Database!");
+                // 🔥 FIX: Premium Success Message and Animation!
+                toast.success("Order placed successfully! 🎉", { icon: '✨' });
+                setShowCelebration(true);
+                setTimeout(() => setShowCelebration(false), 5000); // 5 seconds of confetti
 
-                // 🔥 FIX: Deduct Stock from Real Database automatically after order
                 for (const item of orderPayload.items) {
                     const { data: productData } = await supabase.from('products').select('stock').eq('id', item.id).single();
                     if (productData) {
-                        const newStock = Math.max(0, productData.stock - item.quantity); // Ensures stock doesn't go below 0
+                        const newStock = Math.max(0, productData.stock - item.quantity);
                         await supabase.from('products').update({ stock: newStock }).eq('id', item.id);
                     }
                 }
 
-                // 🔥 SEND ACTUAL EMAIL AUTOMATICALLY
                 try {
                     await fetch('/api/email/order-confirmation', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             ...dbPayload,
-                            // 🔥 FIX: ईमेल API को एकदम सही कनवर्टेड और फॉर्मेटेड अमाउंट भेजें 
                             formatted_total: convertPrice(orderPayload.total_amount)
                         })
                     });
-                    console.log("Confirmation Email Sent!");
                 } catch (emailErr) {
                     console.error("Failed to send email", emailErr);
                 }
@@ -483,7 +482,6 @@ export default function CheckoutPage() {
             console.error("Database connection error", dbError);
         }
 
-        // Keep local storage for current session immediate UI updates
         const existingOrdersList = JSON.parse(localStorage.getItem('shophub_orders')) || [];
         localStorage.setItem('shophub_orders', JSON.stringify([orderPayload, ...existingOrdersList]));
 
@@ -492,7 +490,6 @@ export default function CheckoutPage() {
         setIsSuccessModalOpen(true);
     };
 
-    // 🔥 FIX: Changed from Component `<OrderSummary />` to a standard function `renderOrderSummary()`
     const renderOrderSummary = () => (
         <div className="bg-stone-50 rounded-3xl p-8 border border-stone-100">
             <div className="flex items-center mb-8 border-b border-stone-200 pb-4 gap-3">
@@ -507,7 +504,6 @@ export default function CheckoutPage() {
                     <p className="text-stone-500 text-center py-8 text-sm">Your bag is empty</p>
                 ) : (
                     cartItems.map((item, idx) => {
-                        // Ensure price is a number to prevent NaN calculation errors
                         const itemPrice = typeof item.price === 'string' ? parseFloat(item.price) : item.price;
                         return (
                             <div key={idx} className="flex gap-4 group">
@@ -576,7 +572,6 @@ export default function CheckoutPage() {
                     </div>
                 )}
                 <div className="flex justify-between text-stone-500">
-                    {/* Show Free tag only if India and meets threshold */}
                     <span>Shipping {formData.country === 'IN' && rawSubtotal >= effectiveFreeShipping ? '(Free)' : ''}</span>
                     <span className="font-medium text-stone-900">{SHIPPING_COST === 0 ? 'Free' : convertPrice(SHIPPING_COST)}</span>
                 </div>
@@ -592,7 +587,6 @@ export default function CheckoutPage() {
         </div>
     );
 
-    // 🔥 FIX: Hide checkout form entirely while checking auth to prevent blinking
     if (!mounted || isCheckingAuth) {
         return (
             <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center animate-fade-in">
@@ -674,10 +668,8 @@ export default function CheckoutPage() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12">
                 <form onSubmit={handlePlaceOrder} className="lg:flex lg:gap-12 items-start">
 
-                    {/* Checkout Steps (Left Side) */}
                     <div className="lg:w-2/3 space-y-16">
                         <div className="lg:hidden mb-12">
-                            {/* 🔥 FIX: Called as a function to prevent focus loss */}
                             {renderOrderSummary()}
                         </div>
 
@@ -722,7 +714,6 @@ export default function CheckoutPage() {
                                 </div>
                                 <div>
                                     <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Country *</label>
-                                    {/* 🔥 NEW: Comprehensive Country List */}
                                     <select required name="country" value={formData.country} onChange={handleInputChange} className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 focus:bg-white transition-colors text-sm appearance-none font-bold">
                                         <option value="">Select a country</option>
                                         <option value="IN">India</option>
@@ -744,8 +735,8 @@ export default function CheckoutPage() {
                                         <option value="SG">Singapore</option>
                                         <option value="JP">Japan</option>
                                         <option value="NZ">New Zealand</option>
-                                        <option value="ZA">New Zealand</option>
-                                        <option value="MX">South Africa</option>
+                                        <option value="ZA">South Africa</option>
+                                        <option value="MX">Mexico</option>
                                         <option value="BR">Brazil</option>
                                         <option value="ROW">Rest of the World</option>
                                     </select>
@@ -753,7 +744,7 @@ export default function CheckoutPage() {
                             </div>
                         </section>
 
-                        {/* Step 2: Payment Gateways API Check */}
+                        {/* Step 2: Payment Gateways */}
                         <section>
                             <div className="flex items-baseline gap-4 mb-8">
                                 <span className="text-sm font-bold text-stone-300 tracking-widest">02</span>
@@ -986,7 +977,6 @@ export default function CheckoutPage() {
                     </div>
 
                     <div className="hidden lg:block lg:w-1/3 sticky top-24">
-                        {/* 🔥 FIX: Called as a function to prevent focus loss */}
                         {renderOrderSummary()}
                     </div>
                 </form>

@@ -313,7 +313,7 @@ export default function CheckoutPage() {
             email: formData.email,
             items: cartItems,
             
-            // 🔥 FIX: ADDED ROOT LEVEL ADDRESS FIELDS FOR ACCOUNT PAGE COMPATIBILITY
+            // 🔥 NEW FIX: Added root-level fields for Account Page compatibility while maintaining shipping_address
             shippingAddress: formData.address,
             city: formData.city,
             state: formData.state,
@@ -326,14 +326,14 @@ export default function CheckoutPage() {
                 email: formData.email,
                 phone: formData.phone,
                 address: formData.address,
-                street: formData.address, // 🔥 FIX: Account page looks for 'street'
+                street: formData.address, // For Account Page fallback
                 city: formData.city,
                 state: formData.state,
                 postalCode: formData.postalCode,
-                zipCode: formData.postalCode, // 🔥 FIX: Account page looks for 'zipCode'
+                zipCode: formData.postalCode, // For Account Page fallback
                 country: formData.country,
             },
-            shipping_cost: SHIPPING_COST, 
+            shipping_cost: SHIPPING_COST,
             payment_method: paymentMethod,
             payment_details: paymentDetails,
             coupon: appliedCoupon ? appliedCoupon.code : null,
@@ -441,10 +441,10 @@ export default function CheckoutPage() {
                 customerName: orderPayload.customerName,
                 email: orderPayload.email,
                 items: orderPayload.items,
-                shipping_address: orderPayload.shipping_address, 
-                shipping: orderPayload.shipping_cost, 
-                
-                // 🔥 FIX: Passed Root level fields to Real Database
+                shipping_address: orderPayload.shipping_address,
+                shipping: orderPayload.shipping_cost, // Explicit Number for Cost Display
+
+                // 🔥 FIX: Passed Root level fields to Real Database without breaking Supabase structure
                 shippingAddress: orderPayload.shippingAddress,
                 city: orderPayload.city,
                 state: orderPayload.state,
@@ -468,9 +468,10 @@ export default function CheckoutPage() {
                 console.error("Supabase Save Error Details:", error.message || error);
                 toast.error("Cloud Save Failed. Check DB Columns.");
             } else {
+                // 🔥 FIX: Premium Success Message and Animation!
                 toast.success("Order placed successfully! 🎉", { icon: '✨' });
                 setShowCelebration(true);
-                setTimeout(() => setShowCelebration(false), 5000);
+                setTimeout(() => setShowCelebration(false), 5000); // 5 seconds of confetti
 
                 for (const item of orderPayload.items) {
                     const { data: productData } = await supabase.from('products').select('stock').eq('id', item.id).single();

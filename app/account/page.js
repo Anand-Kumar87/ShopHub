@@ -14,6 +14,16 @@ import {
     FiSmartphone, FiBriefcase, FiGift, FiClock
 } from 'react-icons/fi';
 
+// Country Name Mapper
+const COUNTRY_MAP = {
+    'IN': 'India', 'US': 'United States', 'GB': 'United Kingdom', 'CA': 'Canada',
+    'AU': 'Australia', 'FR': 'France', 'DE': 'Germany', 'IT': 'Italy',
+    'ES': 'Spain', 'NL': 'Netherlands', 'SE': 'Sweden', 'CH': 'Switzerland',
+    'AE': 'United Arab Emirates', 'SG': 'Singapore', 'JP': 'Japan',
+    'NZ': 'New Zealand', 'ZA': 'South Africa', 'MX': 'Mexico', 'BR': 'Brazil',
+    'ROW': 'Rest of the World'
+};
+
 // Safe parsing helpers to prevent NaN or Invalid Date errors
 const safePrice = (val) => {
     const num = parseFloat(val);
@@ -741,7 +751,7 @@ export default function AccountPage() {
 
             {/* --- MODALS --- */}
             {selectedOrder && (
-                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4 sm:p-6 animate-fade-in print-wrapper">
+                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-start justify-center p-4 pt-16 sm:p-6 animate-fade-in print-wrapper">
                     {/* 🔥 FIX: 'print-container' properly scales to fit A4 size and hides background */}
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col border border-stone-100 print-container">
 
@@ -817,7 +827,7 @@ export default function AccountPage() {
                                                 <span className="font-bold text-stone-900 block mb-1">Destination</span>
                                                 {selectedOrder.shippingAddress || selectedOrder.shipping?.address || selectedOrder.shipping_address?.street}<br />
                                                 {selectedOrder.city || selectedOrder.shipping?.city || selectedOrder.shipping_address?.city}, {selectedOrder.state || selectedOrder.shipping?.state || selectedOrder.shipping_address?.state} {selectedOrder.postalCode || selectedOrder.shipping?.postalCode || selectedOrder.shipping_address?.zipCode}<br />
-                                                {selectedOrder.country || selectedOrder.shipping?.country || selectedOrder.shipping_address?.country}
+                                                {COUNTRY_MAP[selectedOrder.country || selectedOrder.shipping?.country || selectedOrder.shipping_address?.country] || (selectedOrder.country || selectedOrder.shipping?.country || selectedOrder.shipping_address?.country)}
                                             </>
                                         ) : "Address details pending."}
                                     </p>

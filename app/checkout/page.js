@@ -172,7 +172,7 @@ export default function CheckoutPage() {
                     { code: 'FESTIVAL20', discount: 20, type: 'percent' },
                     { code: 'FLAT50', discount: 50, type: 'fixed' },
                     { code: 'WELCOME10', discount: 10, type: 'percent' },
-                    { code: 'STUDENT10', discount: 10, type: 'percent' } 
+                    { code: 'STUDENT10', discount: 10, type: 'percent' }
                 ];
                 validCoupon = adminCoupons.find(c => c.code.toUpperCase() === codeToApply);
             }
@@ -311,11 +311,11 @@ export default function CheckoutPage() {
                 email: formData.email,
                 phone: formData.phone,
                 address: formData.address,
-                street: formData.address, 
+                street: formData.address,
                 city: formData.city,
                 state: formData.state,
                 postalCode: formData.postalCode,
-                zipCode: formData.postalCode, 
+                zipCode: formData.postalCode,
                 country: formData.country,
             },
             shipping_cost: SHIPPING_COST,
@@ -427,7 +427,7 @@ export default function CheckoutPage() {
                 customerName: orderPayload.customerName,
                 email: orderPayload.email,
                 items: orderPayload.items,
-                shipping_address: orderPayload.shipping_address, 
+                shipping_address: orderPayload.shipping_address,
                 shipping: orderPayload.shipping_cost,
                 payment_method: orderPayload.payment_method,
                 payment_details: orderPayload.payment_details,
@@ -448,7 +448,7 @@ export default function CheckoutPage() {
             } else {
                 toast.success("Order placed successfully! 🎉", { icon: '✨' });
                 setShowCelebration(true);
-                setTimeout(() => setShowCelebration(false), 5000); 
+                setTimeout(() => setShowCelebration(false), 5000);
 
                 for (const item of orderPayload.items) {
                     const { data: productData } = await supabase.from('products').select('stock').eq('id', item.id).single();
@@ -992,7 +992,7 @@ export default function CheckoutPage() {
 
             {/* Success Modal (Glassmorphism) */}
             {isSuccessModalOpen && (
-                <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-md z-[200] flex items-center justify-center p-4 animate-fade-in">
+                <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-md z-[200] flex items-start justify-center p-4 animate-fade-in">
                     <div className="bg-white rounded-3xl p-10 max-w-md mx-auto text-center transform scale-100 transition-transform shadow-2xl relative border border-stone-100">
                         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-stone-900 mb-6 shadow-xl shadow-stone-900/20">
                             <FiCheck className="text-2xl text-white" />

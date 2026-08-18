@@ -312,19 +312,28 @@ export default function CheckoutPage() {
             customerName: `${formData.firstName} ${formData.lastName}`.trim(),
             email: formData.email,
             items: cartItems,
-            // 🔥 FIX: Renamed 'shipping' to 'shipping_address' to prevent conflict with shipping cost in DB
+            
+            // 🔥 FIX: ADDED ROOT LEVEL ADDRESS FIELDS FOR ACCOUNT PAGE COMPATIBILITY
+            shippingAddress: formData.address,
+            city: formData.city,
+            state: formData.state,
+            postalCode: formData.postalCode,
+            country: formData.country,
+
             shipping_address: {
                 firstName: formData.firstName,
                 lastName: formData.lastName,
                 email: formData.email,
                 phone: formData.phone,
                 address: formData.address,
+                street: formData.address, // 🔥 FIX: Account page looks for 'street'
                 city: formData.city,
                 state: formData.state,
                 postalCode: formData.postalCode,
+                zipCode: formData.postalCode, // 🔥 FIX: Account page looks for 'zipCode'
                 country: formData.country,
             },
-            shipping_cost: SHIPPING_COST, // 🔥 Explicit Cost
+            shipping_cost: SHIPPING_COST, 
             payment_method: paymentMethod,
             payment_details: paymentDetails,
             coupon: appliedCoupon ? appliedCoupon.code : null,
@@ -427,14 +436,21 @@ export default function CheckoutPage() {
         try {
             const { data: { session } } = await supabase.auth.getSession();
 
-            // 🔥 FIX: Properly map the shipping payload to prevent Account Page '0' error
             const dbPayload = {
                 orderNumber: orderPayload.orderNumber,
                 customerName: orderPayload.customerName,
                 email: orderPayload.email,
                 items: orderPayload.items,
-                shipping_address: orderPayload.shipping_address, // Real address object
-                shipping: orderPayload.shipping_cost, // Explicit Number for Cost Display
+                shipping_address: orderPayload.shipping_address, 
+                shipping: orderPayload.shipping_cost, 
+                
+                // 🔥 FIX: Passed Root level fields to Real Database
+                shippingAddress: orderPayload.shippingAddress,
+                city: orderPayload.city,
+                state: orderPayload.state,
+                postalCode: orderPayload.postalCode,
+                country: orderPayload.country,
+                
                 payment_method: orderPayload.payment_method,
                 payment_details: orderPayload.payment_details,
                 paymentStatus: orderPayload.paymentStatus || 'Unpaid',
@@ -452,10 +468,9 @@ export default function CheckoutPage() {
                 console.error("Supabase Save Error Details:", error.message || error);
                 toast.error("Cloud Save Failed. Check DB Columns.");
             } else {
-                // 🔥 FIX: Premium Success Message and Animation!
                 toast.success("Order placed successfully! 🎉", { icon: '✨' });
                 setShowCelebration(true);
-                setTimeout(() => setShowCelebration(false), 5000); // 5 seconds of confetti
+                setTimeout(() => setShowCelebration(false), 5000);
 
                 for (const item of orderPayload.items) {
                     const { data: productData } = await supabase.from('products').select('stock').eq('id', item.id).single();

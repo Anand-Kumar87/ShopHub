@@ -7,6 +7,13 @@ import { CartProvider } from './context/CartContext';
 import { CurrencyProvider } from './context/CurrencyContext'; // <-- Currency Provider Import
 import { Toaster } from 'react-hot-toast';
 
+// 🔥 NEW: MOBILE ZOOM FIX (इसे लगाने से मोबाइल पर बटन क्लिक करने पर स्क्रीन ज़ूम नहीं होगी)
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
 
 // 🔥 1. PREMIUM SEO & META TAGS
 export const metadata = {

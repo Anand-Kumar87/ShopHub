@@ -154,7 +154,6 @@ export default function CheckoutPage() {
         if (!couponCode.trim()) return;
         const codeToApply = couponCode.trim().toUpperCase();
 
-        // 1. Student Code Restriction Logic
         if (codeToApply === 'STUDENT10') {
             const emailLower = formData.email.toLowerCase();
             const isStudent = emailLower.endsWith('.edu') || emailLower.endsWith('.ac.in') || emailLower.endsWith('.edu.in');
@@ -165,17 +164,15 @@ export default function CheckoutPage() {
         }
 
         try {
-            // 2. Fetch from Database
             const { data: dbCoupons, error } = await supabase.from('coupons').select('*').eq('code', codeToApply);
             let validCoupon = dbCoupons?.[0];
 
-            // Fallback to local admin coupons if DB fails
             if (!validCoupon) {
                 const adminCoupons = JSON.parse(localStorage.getItem('shophub_admin_coupons')) || [
                     { code: 'FESTIVAL20', discount: 20, type: 'percent' },
                     { code: 'FLAT50', discount: 50, type: 'fixed' },
                     { code: 'WELCOME10', discount: 10, type: 'percent' },
-                    { code: 'STUDENT10', discount: 10, type: 'percent' } // Added STUDENT10 to fallback
+                    { code: 'STUDENT10', discount: 10, type: 'percent' } 
                 ];
                 validCoupon = adminCoupons.find(c => c.code.toUpperCase() === codeToApply);
             }
@@ -185,7 +182,6 @@ export default function CheckoutPage() {
                 return;
             }
 
-            // 3. Check Expiry Date
             if (validCoupon.expires_at) {
                 const expiryDate = new Date(validCoupon.expires_at);
                 if (expiryDate < new Date()) {
@@ -194,14 +190,12 @@ export default function CheckoutPage() {
                 }
             }
 
-            // 4. Single-Use Check (Verify if user has used this coupon in past orders)
             const { data: pastOrders } = await supabase.from('orders').select('id').eq('email', formData.email).eq('coupon', codeToApply);
             if (pastOrders && pastOrders.length > 0) {
                 toast.error('You have already used this promo code. It can only be used once per user.');
                 return;
             }
 
-            // If all checks pass
             setAppliedCoupon(validCoupon);
             toast.success(`Awesome! You unlocked ${validCoupon.type === 'percent' ? `${validCoupon.discount}%` : convertPrice(validCoupon.discount)} off.`);
             setShowCelebration(true);
@@ -217,7 +211,6 @@ export default function CheckoutPage() {
         setAppliedCoupon(null);
     };
 
-    // --- SMART DYNAMIC CALCULATIONS ---
     const rawSubtotal = getTotalPrice ? getTotalPrice() : 0;
     const rawTaxFromDB = dbSettings?.taxRate ?? contextTaxRate ?? 8;
     const actualTaxRate = rawTaxFromDB > 1 ? rawTaxFromDB / 100 : rawTaxFromDB;
@@ -312,25 +305,17 @@ export default function CheckoutPage() {
             customerName: `${formData.firstName} ${formData.lastName}`.trim(),
             email: formData.email,
             items: cartItems,
-            
-            // 🔥 NEW FIX: Added root-level fields for Account Page compatibility while maintaining shipping_address
-            shippingAddress: formData.address,
-            city: formData.city,
-            state: formData.state,
-            postalCode: formData.postalCode,
-            country: formData.country,
-
             shipping_address: {
                 firstName: formData.firstName,
                 lastName: formData.lastName,
                 email: formData.email,
                 phone: formData.phone,
                 address: formData.address,
-                street: formData.address, // For Account Page fallback
+                street: formData.address, 
                 city: formData.city,
                 state: formData.state,
                 postalCode: formData.postalCode,
-                zipCode: formData.postalCode, // For Account Page fallback
+                zipCode: formData.postalCode, 
                 country: formData.country,
             },
             shipping_cost: SHIPPING_COST,
@@ -353,7 +338,7 @@ export default function CheckoutPage() {
 
         if (localFinalTotal < 1) {
             orderPayload.paymentStatus = 'Paid';
-            await executeOrderSave(orderPayload, existingOrders);
+            await executeOrderSave(orderPayload);
             return;
         }
 
@@ -395,7 +380,7 @@ export default function CheckoutPage() {
                     handler: async function (response) {
                         orderPayload.paymentStatus = 'Paid';
                         orderPayload.razorpay_payment_id = response.razorpay_payment_id;
-                        await executeOrderSave(orderPayload, existingOrders);
+                        await executeOrderSave(orderPayload);
                     },
                     prefill: { name: orderPayload.customerName, email: orderPayload.email, contact: formData.phone },
                     theme: { color: "#1c1917" }
@@ -409,10 +394,10 @@ export default function CheckoutPage() {
                 paymentObject.open();
             } else if (paymentMethod === 'cod') {
                 orderPayload.paymentStatus = 'Unpaid';
-                setTimeout(async () => await executeOrderSave(orderPayload, existingOrders), 1000);
+                setTimeout(async () => await executeOrderSave(orderPayload), 1000);
             } else {
                 orderPayload.paymentStatus = 'Unpaid';
-                setTimeout(async () => await executeOrderSave(orderPayload, existingOrders), 1500);
+                setTimeout(async () => await executeOrderSave(orderPayload), 1500);
             }
 
         } catch (error) {
@@ -424,33 +409,26 @@ export default function CheckoutPage() {
             if (error.message.includes('API Route not found') || error.message.includes('Unexpected token')) {
                 toast.error("Falling back to manual order.");
                 orderPayload.paymentStatus = 'Unpaid';
-                setTimeout(async () => await executeOrderSave(orderPayload, existingOrders), 1000);
+                setTimeout(async () => await executeOrderSave(orderPayload), 1000);
             }
         }
     };
 
-    // 🔥 MAIN DATABASE SAVE FUNCTION WITH EMAIL
+    // 🔥 MAIN DATABASE SAVE FUNCTION WITH EMAIL (100% FIXED)
     const executeOrderSave = async (orderPayload) => {
         setFinalOrder(orderPayload);
 
         try {
             const { data: { session } } = await supabase.auth.getSession();
 
+            // 🔥 FIX 1: Cleaned up dbPayload (Removed stray city, state, country causing 400 error)
             const dbPayload = {
                 orderNumber: orderPayload.orderNumber,
                 customerName: orderPayload.customerName,
                 email: orderPayload.email,
                 items: orderPayload.items,
-                shipping_address: orderPayload.shipping_address,
-                shipping: orderPayload.shipping_cost, // Explicit Number for Cost Display
-
-                // 🔥 FIX: Passed Root level fields to Real Database without breaking Supabase structure
-                shippingAddress: orderPayload.shippingAddress,
-                city: orderPayload.city,
-                state: orderPayload.state,
-                postalCode: orderPayload.postalCode,
-                country: orderPayload.country,
-                
+                shipping_address: orderPayload.shipping_address, 
+                shipping: orderPayload.shipping_cost,
                 payment_method: orderPayload.payment_method,
                 payment_details: orderPayload.payment_details,
                 paymentStatus: orderPayload.paymentStatus || 'Unpaid',
@@ -468,10 +446,9 @@ export default function CheckoutPage() {
                 console.error("Supabase Save Error Details:", error.message || error);
                 toast.error("Cloud Save Failed. Check DB Columns.");
             } else {
-                // 🔥 FIX: Premium Success Message and Animation!
                 toast.success("Order placed successfully! 🎉", { icon: '✨' });
                 setShowCelebration(true);
-                setTimeout(() => setShowCelebration(false), 5000); // 5 seconds of confetti
+                setTimeout(() => setShowCelebration(false), 5000); 
 
                 for (const item of orderPayload.items) {
                     const { data: productData } = await supabase.from('products').select('stock').eq('id', item.id).single();
@@ -498,8 +475,23 @@ export default function CheckoutPage() {
             console.error("Database connection error", dbError);
         }
 
-        const existingOrdersList = JSON.parse(localStorage.getItem('shophub_orders')) || [];
-        localStorage.setItem('shophub_orders', JSON.stringify([orderPayload, ...existingOrdersList]));
+        // 🔥 FIX 2: Prevent QuotaExceededError (Stripped out heavy base64 strings and kept only last 10 orders locally)
+        try {
+            const litePayload = { ...orderPayload };
+            if (litePayload.items) {
+                litePayload.items = litePayload.items.map(item => ({
+                    ...item,
+                    images: item.images?.map(img => img?.startsWith('data:') ? '' : img),
+                    image: item.image?.startsWith('data:') ? '' : item.image
+                }));
+            }
+            const existingOrdersList = JSON.parse(localStorage.getItem('shophub_orders')) || [];
+            const newOrdersList = [litePayload, ...existingOrdersList].slice(0, 10);
+            localStorage.setItem('shophub_orders', JSON.stringify(newOrdersList));
+        } catch (storageError) {
+            console.warn("Storage Full. Clearing old local orders.");
+            localStorage.removeItem('shophub_orders');
+        }
 
         setIsProcessingPayment(false);
         if (clearCart) clearCart();

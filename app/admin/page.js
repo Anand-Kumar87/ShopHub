@@ -85,7 +85,9 @@ export default function AdminDashboard() {
     });
 
     const [categoryForm, setCategoryForm] = useState({ name: '', slug: '', description: '', image: '' });
-    const [couponForm, setCouponForm] = useState({ code: '', discount: 0, type: 'percent' });
+
+    // 🔥 FIX: Added 'expires_at' and 'target_role' to the form state
+    const [couponForm, setCouponForm] = useState({ code: '', discount: 0, type: 'percent', expires_at: '', target_role: 'all' });
 
     const productFileInputRef = useRef(null);
     const categoryFileInputRef = useRef(null);
@@ -455,14 +457,21 @@ export default function AdminDashboard() {
     const openCouponModal = (coupon = null) => {
         if (coupon) {
             setSelectedCoupon(coupon);
+            // 🔥 FIX: Check if date exists and format for the input field (YYYY-MM-DD)
+            let formattedDate = '';
+            if (coupon.expires_at) {
+                formattedDate = new Date(coupon.expires_at).toISOString().split('T')[0];
+            }
+
             setCouponForm({
                 ...coupon,
-                // 🔥 FIX: Removed Exchange Rate conversion here so it stays pure INR in admin panel
-                discount: coupon.discount
+                discount: coupon.discount,
+                expires_at: formattedDate,
+                target_role: coupon.target_role || 'all'
             });
         } else {
             setSelectedCoupon(null);
-            setCouponForm({ code: '', discount: 0, type: 'percent' });
+            setCouponForm({ code: '', discount: 0, type: 'percent', expires_at: '', target_role: 'all' });
         }
         setIsCouponModalOpen(true);
     };
@@ -470,11 +479,14 @@ export default function AdminDashboard() {
     const handleCouponSubmit = async (e) => {
         e.preventDefault();
         const formattedCode = couponForm.code.toUpperCase().replace(/\s+/g, '');
+
         const finalCoupon = {
             ...couponForm,
             code: formattedCode,
-            // 🔥 FIX: Removed Exchange Rate conversion here so it stays pure INR in admin panel
-            discount: couponForm.discount
+            discount: couponForm.discount,
+            // 🔥 FIX: Store the date or null if not provided
+            expires_at: couponForm.expires_at ? new Date(couponForm.expires_at).toISOString() : null,
+            target_role: couponForm.target_role
         };
 
         let newCoupons = [];
@@ -484,7 +496,6 @@ export default function AdminDashboard() {
             newCoupons = coupons.map(c => c.id === selectedCoupon.id ? { ...c, ...finalCoupon } : c);
             toast.success("Promo code updated!");
         } else {
-            // 🔥 FIX: ID manually generate करके भेज रहे हैं ताकि null constraint error न आए
             const insertData = { ...finalCoupon, id: generateId() };
             delete insertData.created_at;
 
@@ -1141,8 +1152,9 @@ export default function AdminDashboard() {
                                         <thead>
                                             <tr className="border-b-2 border-stone-900">
                                                 <th className="py-4 pr-4 font-bold tracking-widest uppercase text-[10px] text-stone-400">Code</th>
-                                                <th className="py-4 px-4 font-bold tracking-widest uppercase text-[10px] text-stone-400">Type</th>
-                                                <th className="py-4 px-4 font-bold tracking-widest uppercase text-[10px] text-stone-400">Discount</th>
+                                                <th className="py-4 px-4 font-bold tracking-widest uppercase text-[10px] text-stone-400">Type & Value</th>
+                                                <th className="py-4 px-4 font-bold tracking-widest uppercase text-[10px] text-stone-400">Target</th>
+                                                <th className="py-4 px-4 font-bold tracking-widest uppercase text-[10px] text-stone-400">Expires</th>
                                                 <th className="py-4 pl-4 font-bold tracking-widest uppercase text-[10px] text-stone-400 text-right">Actions</th>
                                             </tr>
                                         </thead>
@@ -1150,9 +1162,16 @@ export default function AdminDashboard() {
                                             {coupons.map(coupon => (
                                                 <tr key={coupon.id} className="border-b border-stone-100 hover:bg-stone-50/50 transition-colors">
                                                     <td className="py-5 pr-4 font-bold tracking-widest text-stone-900 uppercase">{coupon.code}</td>
-                                                    <td className="py-5 px-4 capitalize">{coupon.type}</td>
                                                     <td className="py-5 px-4 font-bold text-stone-900">
                                                         {coupon.type === 'percent' ? `${coupon.discount}%` : convertPrice(coupon.discount)}
+                                                    </td>
+                                                    <td className="py-5 px-4">
+                                                        <span className={`px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-widest rounded-full ${coupon.target_role === 'student' ? 'bg-blue-50 text-blue-600' : 'bg-stone-100 text-stone-500'}`}>
+                                                            {coupon.target_role === 'student' ? 'Students Only' : 'Everyone'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-5 px-4 text-xs">
+                                                        {coupon.expires_at ? safeDate(coupon.expires_at).split(',')[0] : 'Never'}
                                                     </td>
                                                     <td className="py-5 pl-4 text-right">
                                                         <div className="flex items-center justify-end gap-3">
@@ -1174,7 +1193,7 @@ export default function AdminDashboard() {
                                             ))}
                                             {coupons.length === 0 && (
                                                 <tr>
-                                                    <td colSpan="4" className="text-center py-10 text-stone-400 text-sm">
+                                                    <td colSpan="5" className="text-center py-10 text-stone-400 text-sm">
                                                         No promo codes active.
                                                     </td>
                                                 </tr>
@@ -2062,7 +2081,7 @@ export default function AdminDashboard() {
                 </div>
             )}
 
-            {/* COUPON MODAL */}
+            {/* 🔥 UPDATED COUPON MODAL */}
             {isCouponModalOpen && (
                 <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-stone-100">
@@ -2110,6 +2129,31 @@ export default function AdminDashboard() {
                                     />
                                 </div>
                             </div>
+
+                            {/* 🔥 NEW: Expiry & Target Role Fields */}
+                            <div className="grid grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Expiration Date (Optional)</label>
+                                    <input
+                                        type="date"
+                                        value={couponForm.expires_at || ''}
+                                        onChange={e => setCouponForm({ ...couponForm, expires_at: e.target.value })}
+                                        className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Who can use this?</label>
+                                    <select
+                                        value={couponForm.target_role || 'all'}
+                                        onChange={e => setCouponForm({ ...couponForm, target_role: e.target.value })}
+                                        className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm appearance-none"
+                                    >
+                                        <option value="all">Everyone</option>
+                                        <option value="student">Verified Students Only (.edu)</option>
+                                    </select>
+                                </div>
+                            </div>
+
                             <div className="pt-4 flex justify-end gap-3 border-t border-stone-100 mt-6">
                                 <button
                                     type="button"

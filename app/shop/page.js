@@ -7,8 +7,8 @@ import Link from 'next/link';
 import useSWR from 'swr'; // 🔥 SWR Imported for Light-Speed Caching
 import {
     FiHeart, FiShoppingBag, FiTruck, FiRefreshCcw,
-    FiShield, FiMapPin, FiArrowRight, FiX, FiStar, FiFilter,
-    FiMinus, FiPlus, FiList, FiGrid, FiMessageSquare, FiEye
+    FiShield, FiMapPin, FiArrowRight, FiX, FiStar,
+    FiMinus, FiPlus, FiMessageSquare, FiEye, FiFilter, FiGrid, FiList
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
@@ -381,6 +381,7 @@ function ShopContent() {
                             <div className={viewMode === 'grid' ? "grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-12 sm:gap-x-8" : "flex flex-col gap-8"}>
                                 {paginatedProducts.map(product => {
                                     const isWishlisted = wishlistItems.some(item => item.id === product.id);
+                                    const isOutOfStock = product.stock <= 0 || product.quantity <= 0; // 🔥 OUT OF STOCK CHECK
 
                                     return (
                                         <div
@@ -396,7 +397,7 @@ function ShopContent() {
                                                     alt={product.name}
                                                     fill
                                                     sizes="(max-width: 768px) 100vw, 33vw"
-                                                    className="object-cover transition-opacity duration-700 opacity-100 group-hover:opacity-0"
+                                                    className={`object-cover transition-opacity duration-700 opacity-100 group-hover:opacity-0 ${isOutOfStock ? 'grayscale opacity-70' : ''}`}
                                                 />
                                                 {/* Image 2 (Shows on hover) */}
                                                 {product.images[1] && (
@@ -405,8 +406,15 @@ function ShopContent() {
                                                         alt={product.name}
                                                         fill
                                                         sizes="(max-width: 768px) 100vw, 33vw"
-                                                        className="object-cover transition-opacity duration-700 opacity-0 group-hover:opacity-100 absolute inset-0"
+                                                        className={`object-cover transition-opacity duration-700 opacity-0 group-hover:opacity-100 absolute inset-0 ${isOutOfStock ? 'grayscale opacity-70' : ''}`}
                                                     />
+                                                )}
+
+                                                {/* 🔥 OUT OF STOCK BADGE */}
+                                                {isOutOfStock && (
+                                                    <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white/95 text-stone-900 text-[10px] font-bold tracking-widest uppercase px-4 py-2 rounded-full shadow-lg z-20 whitespace-nowrap">
+                                                        Sold Out
+                                                    </span>
                                                 )}
 
                                                 {/* Premium Badges */}
@@ -425,7 +433,7 @@ function ShopContent() {
                                                     <FiHeart size={16} className={isWishlisted ? 'fill-current' : ''} />
                                                 </button>
 
-                                                {/* 🔥 NEW: Premium Quick View (Eye) Icon for Shop Page */}
+                                                {/* 🔥 Premium Quick View (Eye) Icon for Shop Page */}
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); setSelectedProduct(product); setModalQuantity(1); }}
                                                     className={`absolute top-12 right-3 p-2 bg-white/90 backdrop-blur-sm rounded-full text-stone-400 hover:text-stone-900 hover:bg-white transition-all duration-300 z-10 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0`}
@@ -436,21 +444,21 @@ function ShopContent() {
 
                                             {/* Product Info */}
                                             <div className={viewMode === 'list' ? 'w-2/3 pr-4' : ''}>
-                                                <h3 className={`font-bold text-stone-900 mb-1 ${viewMode === 'list' ? 'text-2xl mb-3' : 'text-sm truncate'}`}>{product.name}</h3>
+                                                <h3 className={`font-bold transition-colors mb-1 ${viewMode === 'list' ? 'text-2xl mb-3' : 'text-sm truncate'} ${isOutOfStock ? 'text-stone-400' : 'text-stone-900 group-hover:text-stone-500'}`}>{product.name}</h3>
 
                                                 <div className="flex items-center gap-2 mb-3">
-                                                    <span className={`${viewMode === 'list' ? 'text-xl' : 'text-sm'} font-medium text-stone-600`}>
+                                                    <span className={`${viewMode === 'list' ? 'text-xl' : 'text-sm'} font-medium ${isOutOfStock ? 'text-stone-400' : 'text-stone-600'}`}>
                                                         {convertPrice(product.salePrice || product.price)}
                                                     </span>
                                                     {product.oldPrice && (
-                                                        <span className="text-xs text-stone-400 line-through">
+                                                        <span className={`text-xs line-through ${isOutOfStock ? 'text-stone-300' : 'text-stone-400'}`}>
                                                             {convertPrice(product.oldPrice)}
                                                         </span>
                                                     )}
                                                 </div>
 
                                                 {/* Color Swatches */}
-                                                {product.colors && product.colors.length > 0 && (
+                                                {product.colors && product.colors.length > 0 && !isOutOfStock && (
                                                     <div className="flex gap-1.5 mb-2">
                                                         {product.colors.map((color, i) => (
                                                             <div key={i} className="w-3.5 h-3.5 rounded-full border border-stone-200" style={{ backgroundColor: color }}></div>
@@ -465,9 +473,15 @@ function ShopContent() {
                                                 {/* List View Quick Add */}
                                                 {viewMode === 'list' && (
                                                     <MagneticButton>
-                                                        <button onClick={(e) => { e.stopPropagation(); handleAddToCart(product); }} className="px-8 py-3 bg-stone-900 text-white rounded-full text-sm font-bold tracking-widest uppercase hover:bg-stone-800 transition-colors w-max">
-                                                            Quick Add
-                                                        </button>
+                                                        {isOutOfStock ? (
+                                                            <button disabled className="px-8 py-3 bg-stone-200 text-stone-400 rounded-full text-sm font-bold tracking-widest uppercase cursor-not-allowed w-max" onClick={(e) => e.stopPropagation()}>
+                                                                Out of Stock
+                                                            </button>
+                                                        ) : (
+                                                            <button onClick={(e) => { e.stopPropagation(); handleAddToCart(product); }} className="px-8 py-3 bg-stone-900 text-white rounded-full text-sm font-bold tracking-widest uppercase hover:bg-stone-800 transition-colors w-max">
+                                                                Quick Add
+                                                            </button>
+                                                        )}
                                                     </MagneticButton>
                                                 )}
                                             </div>
@@ -624,9 +638,15 @@ function ShopContent() {
                                         </div>
 
                                         <MagneticButton className="flex-1">
-                                            <button onClick={() => handleAddToCart(selectedProduct)} className="w-full bg-stone-900 text-white rounded-full text-sm font-bold tracking-widest uppercase hover:bg-stone-800 transition-colors shadow-lg shadow-stone-900/20 py-3.5">
-                                                Add to Bag
-                                            </button>
+                                            {(selectedProduct.stock <= 0 || selectedProduct.quantity <= 0) ? (
+                                                <button disabled className="w-full bg-stone-200 text-stone-400 rounded-full text-sm font-bold tracking-widest uppercase cursor-not-allowed py-3.5">
+                                                    Out of Stock
+                                                </button>
+                                            ) : (
+                                                <button onClick={() => handleAddToCart(selectedProduct)} className="w-full bg-stone-900 text-white rounded-full text-sm font-bold tracking-widest uppercase hover:bg-stone-800 transition-colors shadow-lg shadow-stone-900/20 py-3.5">
+                                                    Add to Bag
+                                                </button>
+                                            )}
                                         </MagneticButton>
                                     </div>
                                 </div>
@@ -777,13 +797,5 @@ function ShopContent() {
                 </div>
             )}
         </main>
-    );
-}
-
-export default function ShopPage() {
-    return (
-        <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-stone-50 text-stone-400 font-medium tracking-widest uppercase text-sm">Loading Collection...</div>}>
-            <ShopContent />
-        </Suspense>
     );
 }

@@ -216,6 +216,21 @@ export default function AdminDashboard() {
         };
     }, []);
 
+    // 🔥 AUTO-SCROLL & BACKGROUND SCROLL LOCK FOR MODALS
+    useEffect(() => {
+        const isAnyModalOpen = isProductModalOpen || isCategoryModalOpen || isMessageModalOpen || isCouponModalOpen || isOrderModalOpen || isCustomerModalOpen || isNewCustomerModalOpen;
+
+        if (isAnyModalOpen) {
+            // 1. स्मूथ ऑटो-स्क्रॉल
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            // 2. बैकग्राउंड स्क्रॉल लॉक
+            document.body.style.overflow = 'hidden';
+        } else {
+            // मोडल बंद होने पर स्क्रॉल वापस चालू
+            document.body.style.overflow = 'unset';
+        }
+    }, [isProductModalOpen, isCategoryModalOpen, isMessageModalOpen, isCouponModalOpen, isOrderModalOpen, isCustomerModalOpen, isNewCustomerModalOpen]);
+
     // 🔥 FIX: Removed Exchange Rate conversion here so it stays pure INR in admin panel
     useEffect(() => {
         setSettingsForm({

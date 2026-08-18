@@ -45,14 +45,14 @@ export default function Home() {
   const { convertPrice } = useGlobalCurrency() || { convertPrice: (v) => `$${Number(v).toFixed(2)}` };
 
   // 🔥 SWR Hooks for caching and instant loading
-  const { data: swrCategories, isLoading: isLoadingCats } = useSWR('home_categories', fetchCategories, { 
-      revalidateOnFocus: false, 
-      dedupingInterval: 60000 // Cache for 1 minute
+  const { data: swrCategories, isLoading: isLoadingCats } = useSWR('home_categories', fetchCategories, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60000 // Cache for 1 minute
   });
-  
-  const { data: swrProducts, isLoading: isLoadingProds } = useSWR('home_products', fetchProducts, { 
-      revalidateOnFocus: false,
-      dedupingInterval: 60000 
+
+  const { data: swrProducts, isLoading: isLoadingProds } = useSWR('home_products', fetchProducts, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60000
   });
 
   const [categories, setCategories] = useState([]);
@@ -353,11 +353,13 @@ export default function Home() {
           ) : products.length > 0 ? (
             products.map((product) => {
               const inWishlist = isInWishlist(product.id);
+              const isOutOfStock = product.stock <= 0 || product.quantity <= 0; // 🔥 OUT OF STOCK CHECK
+
               return (
                 <div
                   key={product.id}
                   className="group flex flex-col relative cursor-pointer"
-                  onClick={() => router.push(`/product/${product.id}`)} /* 🔥 FIX: Redirects to Product Page */
+                  onClick={() => router.push(`/product/${product.id}`)}
                 >
                   <div className="relative aspect-[3/4] w-full bg-stone-100 rounded-xl overflow-hidden mb-4 block">
                     <div className="absolute inset-0 z-0">
@@ -365,10 +367,17 @@ export default function Home() {
                         src={product.images?.[0] || product.image || 'https://images.unsplash.com/photo-1434389670869-c87510fed58f?auto=format&fit=crop&w=600&q=80'}
                         alt={product.name}
                         fill
-                        className="object-cover transition-transform duration-700 group-hover:scale-105"
+                        className={`object-cover transition-transform duration-700 ${isOutOfStock ? 'opacity-70 grayscale' : 'group-hover:scale-105'}`}
                         sizes="(max-width: 768px) 50vw, 25vw"
                       />
                     </div>
+
+                    {/* 🔥 OUT OF STOCK BADGE */}
+                    {isOutOfStock && (
+                      <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white/95 text-stone-900 text-[10px] font-bold tracking-widest uppercase px-4 py-2 rounded-full shadow-lg z-20 whitespace-nowrap">
+                        Sold Out
+                      </span>
+                    )}
 
                     <button
                       onClick={(e) => { e.stopPropagation(); handleWishlistToggle(e, product); }}
@@ -377,7 +386,6 @@ export default function Home() {
                       <FiHeart className={inWishlist ? "fill-current" : ""} />
                     </button>
 
-                    {/* 🔥 NEW: Premium Quick View (Eye) Icon with Hover Animation */}
                     <button
                       onClick={(e) => { e.stopPropagation(); setSelectedProduct(product); setModalQuantity(1); }}
                       className="absolute top-14 right-3 p-2.5 bg-white/90 backdrop-blur-sm shadow-sm rounded-full text-stone-400 hover:text-stone-900 hover:bg-white transition-all z-10 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 duration-300"
@@ -386,26 +394,33 @@ export default function Home() {
                     </button>
 
                     <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out z-10">
-                      <button
-                        onClick={(e) => handleAddToCart(e, product, 1)}
-                        className="w-full bg-white/95 backdrop-blur-md text-stone-900 font-bold py-3 rounded-lg shadow-lg hover:bg-stone-900 hover:text-white transition-colors flex items-center justify-center gap-2"
-                      >
-                        <FiShoppingBag /> Quick Add
-                      </button>
+                      {/* 🔥 DISABLED BUTTON IF OUT OF STOCK */}
+                      {isOutOfStock ? (
+                        <button disabled className="w-full bg-stone-200 text-stone-400 font-bold py-3 rounded-lg cursor-not-allowed flex items-center justify-center gap-2" onClick={(e) => e.stopPropagation()}>
+                          Out of Stock
+                        </button>
+                      ) : (
+                        <button
+                          onClick={(e) => handleAddToCart(e, product, 1)}
+                          className="w-full bg-white/95 backdrop-blur-md text-stone-900 font-bold py-3 rounded-lg shadow-lg hover:bg-stone-900 hover:text-white transition-colors flex items-center justify-center gap-2"
+                        >
+                          <FiShoppingBag /> Quick Add
+                        </button>
+                      )}
                     </div>
                   </div>
 
                   <div className="flex flex-col items-start w-full">
-                    <h3 className="text-sm font-bold text-stone-900 group-hover:text-stone-500 transition-colors line-clamp-1 w-full">
+                    <h3 className={`text-sm font-bold transition-colors line-clamp-1 w-full ${isOutOfStock ? 'text-stone-400' : 'text-stone-900 group-hover:text-stone-500'}`}>
                       {product.name}
                     </h3>
-                    <p className="text-sm text-stone-600 mt-1">
+                    <p className={`text-sm mt-1 ${isOutOfStock ? 'text-stone-400' : 'text-stone-600'}`}>
                       {convertPrice(product.salePrice || product.price)}
-                      {product.oldPrice && <span className="text-xs text-stone-400 line-through ml-2">{convertPrice(product.oldPrice)}</span>}
+                      {product.oldPrice && <span className="text-xs text-stone-300 line-through ml-2">{convertPrice(product.oldPrice)}</span>}
                     </p>
                   </div>
 
-                  {product.colors && product.colors.length > 0 && (
+                  {product.colors && product.colors.length > 0 && !isOutOfStock && (
                     <div className="flex gap-1.5 mt-2">
                       {product.colors.map((color, i) => (
                         <div
@@ -441,8 +456,8 @@ export default function Home() {
               <h3 className="text-4xl font-bold mb-3">10% OFF</h3>
               <p className="text-sm text-stone-300 mb-6">Verify your student status and save more.</p>
               <Link href="/student-discount" className="bg-white text-stone-900 text-sm font-bold px-6 py-2.5 rounded-full hover:bg-stone-200 transition-colors w-max block text-center">
-    GET DISCOUNT
-</Link>
+                GET DISCOUNT
+              </Link>
             </div>
             <div className="absolute right-0 top-0 bottom-0 w-1/2 opacity-50 md:opacity-100">
               <Image src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=500&q=80" alt="Student Promo" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover object-left" />
@@ -587,12 +602,18 @@ export default function Home() {
                     </div>
                     {/* 🔥 Magnetic Button Integration */}
                     <MagneticButton className="flex-1">
-                      <button
-                        onClick={(e) => handleAddToCart(e, { ...selectedProduct, color: selectedColor, size: selectedSize }, modalQuantity)}
-                        className="w-full bg-stone-900 text-white rounded-full text-sm font-bold tracking-widest uppercase hover:bg-stone-800 transition-colors shadow-lg shadow-stone-900/20 py-3.5"
-                      >
-                        Add to Bag
-                      </button>
+                      {(selectedProduct.stock <= 0 || selectedProduct.quantity <= 0) ? (
+                        <button disabled className="w-full bg-stone-200 text-stone-400 rounded-full text-sm font-bold tracking-widest uppercase cursor-not-allowed py-3.5">
+                          Out of Stock
+                        </button>
+                      ) : (
+                        <button
+                          onClick={(e) => handleAddToCart(e, { ...selectedProduct, color: selectedColor, size: selectedSize }, modalQuantity)}
+                          className="w-full bg-stone-900 text-white rounded-full text-sm font-bold tracking-widest uppercase hover:bg-stone-800 transition-colors shadow-lg shadow-stone-900/20 py-3.5"
+                        >
+                          Add to Bag
+                        </button>
+                      )}
                     </MagneticButton>
                   </div>
                 </div>

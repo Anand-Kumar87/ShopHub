@@ -185,6 +185,20 @@ export default function AccountPage() {
         };
     }, [router]);
 
+
+    // 🔥 AUTO-SCROLL & BACKGROUND SCROLL LOCK FOR MODALS
+    useEffect(() => {
+        if (isOrderModalOpen) {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+
+        // Cleanup on unmount (ताकि पेज छोड़ने पर स्क्रॉल लॉक न रह जाए)
+        return () => { document.body.style.overflow = 'unset'; };
+    }, [isOrderModalOpen]);
+
     useEffect(() => {
         const orderCount = orders.length;
         const generatedRewards = [];

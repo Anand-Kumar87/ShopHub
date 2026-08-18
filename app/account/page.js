@@ -185,19 +185,25 @@ export default function AccountPage() {
         };
     }, [router]);
 
-
-    // 🔥 AUTO-SCROLL & BACKGROUND SCROLL LOCK FOR MODALS
+    // 🔥 NEW: AUTO-SCROLL & BACKGROUND SCROLL LOCK FOR MODALS
     useEffect(() => {
-        if (isOrderModalOpen) {
+        const isAnyModalOpen = selectedOrder || trackingOrder || paymentModalOpen;
+
+        if (isAnyModalOpen) {
+            // Smoothly auto-scroll to the top of the page when a modal opens
             window.scrollTo({ top: 0, behavior: 'smooth' });
+            // Lock the background scroll
             document.body.style.overflow = 'hidden';
         } else {
+            // Unlock the background scroll when modals close
             document.body.style.overflow = 'unset';
         }
 
-        // Cleanup on unmount (ताकि पेज छोड़ने पर स्क्रॉल लॉक न रह जाए)
-        return () => { document.body.style.overflow = 'unset'; };
-    }, [isOrderModalOpen]);
+        // Cleanup on unmount
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [selectedOrder, trackingOrder, paymentModalOpen]);
 
     useEffect(() => {
         const orderCount = orders.length;

@@ -799,3 +799,10 @@ function ShopContent() {
         </main>
     );
 }
+export default function ShopPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-stone-50 text-stone-400 font-medium tracking-widest uppercase text-sm">Loading Collection...</div>}>
+            <ShopContent />
+        </Suspense>
+    );
+}

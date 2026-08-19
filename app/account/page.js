@@ -897,7 +897,7 @@ export default function AccountPage() {
             )}
 
             {trackingOrder && (
-                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in no-print">
+                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-start justify-center p-4 animate-fade-in no-print">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-stone-100">
                         <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
                             <h3 className="text-lg font-light text-stone-900">Track Journey</h3>

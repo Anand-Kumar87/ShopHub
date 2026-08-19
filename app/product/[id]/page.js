@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { FiShoppingBag, FiHeart, FiStar, FiTruck, FiMinus, FiPlus, FiChevronRight, FiRefreshCcw, FiX, FiMessageSquare } from 'react-icons/fi';
+// 🔥 NEW: FiShare2 icon added for the Share button
+import { FiShoppingBag, FiHeart, FiStar, FiTruck, FiMinus, FiPlus, FiChevronRight, FiRefreshCcw, FiX, FiMessageSquare, FiShare2 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
 // Global Contexts & Supabase
@@ -23,8 +24,8 @@ export default function ProductDetails() {
 
     const { addToCart } = useCart();
 
-    // Fetching freeShippingThreshold & convertPrice from database via context
-    const { convertPrice, freeShippingThreshold } = useGlobalCurrency() || { convertPrice: (v) => `₹${Number(v).toFixed(2)}`, freeShippingThreshold: 4999 };
+    // Fetching freeShippingThreshold from database via context
+    const { convertPrice, freeShippingThreshold } = useGlobalCurrency() || { convertPrice: (v) => `$${Number(v).toFixed(2)}`, freeShippingThreshold: 0 };
     const { wishlistItems, addToWishlist, removeFromWishlist, isInWishlist } = useWishlist() || { isInWishlist: () => false };
 
     // Component States
@@ -114,6 +115,33 @@ export default function ProductDetails() {
         }
     };
 
+    // 🔥 NEW: NATIVE WEB SHARE API LOGIC
+    const handleShare = async () => {
+        if (!product) return;
+        
+        const shareData = {
+            title: `${product.name} | ShopHub.`,
+            text: `Check out this premium ${product.category || 'piece'} on ShopHub.`,
+            url: window.location.href, // This gets the current exact product link
+        };
+
+        // If the browser/mobile supports native sharing (WhatsApp, Insta, etc.)
+        if (navigator.share) {
+            try {
+                await navigator.share(shareData);
+            } catch (err) {
+                // User cancelled share or other error, do nothing
+            }
+        } else {
+            // Fallback for desktop browsers: Copy to clipboard
+            navigator.clipboard.writeText(window.location.href);
+            toast.success('Product link copied to clipboard!', { 
+                icon: '🔗', 
+                style: { background: '#1c1917', color: '#fff' } 
+            });
+        }
+    };
+
     // REAL-TIME SUPABASE REVIEW SYSTEM
     const submitReview = async (e) => {
         e.preventDefault();
@@ -187,7 +215,6 @@ export default function ProductDetails() {
 
                 <div className="bg-white rounded-[2.5rem] shadow-xl shadow-stone-200/40 overflow-hidden w-full border border-stone-100 flex flex-col lg:flex-row">
 
-                    {/* Left: Image Gallery */}
                     <div className="w-full lg:w-1/2 p-6 sm:p-10 lg:p-12 bg-stone-50/30 flex flex-col gap-4 border-b lg:border-b-0 lg:border-r border-stone-100">
                         <div className="relative w-full aspect-[4/5] max-h-[580px] bg-white rounded-2xl overflow-hidden shadow-sm border border-stone-200/60">
                             <Image
@@ -210,10 +237,8 @@ export default function ProductDetails() {
                         )}
                     </div>
 
-                    {/* Right: Content & Tabs */}
                     <div className="w-full lg:w-1/2 p-8 sm:p-10 lg:p-12 flex flex-col">
 
-                        {/* Tabs Navigation */}
                         <div className="flex gap-8 border-b border-stone-200 mb-8">
                             <button onClick={() => setActiveTab('details')} className={`pb-3 text-sm font-bold tracking-widest uppercase transition-colors relative ${activeTab === 'details' ? 'text-stone-900' : 'text-stone-400 hover:text-stone-600'}`}>
                                 Details
@@ -225,7 +250,6 @@ export default function ProductDetails() {
                             </button>
                         </div>
 
-                        {/* DETAILS TAB */}
                         {activeTab === 'details' && (
                             <div className="flex-1 animate-fade-in flex flex-col">
                                 <span className="text-stone-400 font-bold tracking-widest uppercase text-[10px] sm:text-xs mb-2 block">
@@ -255,23 +279,12 @@ export default function ProductDetails() {
 
                                 <p className="text-stone-500 leading-relaxed text-sm sm:text-base mb-10">{product.description}</p>
 
-                                {/* 🔥 UPDATED: Color Selection (Changes Image on click) */}
                                 {product.colors && product.colors.length > 0 && (
                                     <div className="mb-8">
                                         <h3 className="text-xs font-bold tracking-widest uppercase text-stone-900 mb-3.5">Color</h3>
                                         <div className="flex gap-3">
-                                            {product.colors.map((color, idx) => (
-                                                <button 
-                                                    key={color} 
-                                                    onClick={() => {
-                                                        setSelectedColor(color);
-                                                        // Change image based on color index if image exists
-                                                        if (product.images && product.images.length > idx) {
-                                                            setActiveImageIdx(idx);
-                                                        }
-                                                    }} 
-                                                    className={`w-10 h-10 rounded-full border transition-all flex items-center justify-center ${selectedColor === color ? 'border-stone-900 ring-1 ring-offset-2 ring-stone-900 shadow-md' : 'border-stone-300 hover:border-stone-500'}`}
-                                                >
+                                            {product.colors.map(color => (
+                                                <button key={color} onClick={() => setSelectedColor(color)} className={`w-10 h-10 rounded-full border transition-all flex items-center justify-center ${selectedColor === color ? 'border-stone-900 ring-1 ring-offset-2 ring-stone-900 shadow-md' : 'border-stone-300 hover:border-stone-500'}`}>
                                                     <span className="w-8 h-8 rounded-full block border border-stone-200/50" style={{ backgroundColor: color }}></span>
                                                 </button>
                                             ))}
@@ -279,7 +292,6 @@ export default function ProductDetails() {
                                     </div>
                                 )}
 
-                                {/* Size Selection */}
                                 {product.sizes && product.sizes.length > 0 && (
                                     <div className="mb-8">
                                         <div className="flex justify-between items-center mb-3.5">
@@ -301,9 +313,8 @@ export default function ProductDetails() {
                                     </div>
                                 )}
 
-                                {/* Actions Row */}
                                 <div className="flex flex-wrap sm:flex-nowrap gap-4 pt-8 mt-auto border-t border-stone-100 items-center">
-                                    <div className="flex items-center justify-between w-32 h-14 bg-white border border-stone-200 rounded-full px-1.5 shadow-sm">
+                                    <div className="flex items-center justify-between w-32 h-14 bg-white border border-stone-200 rounded-full px-1.5 shadow-sm flex-shrink-0">
                                         <button onClick={decreaseQuantity} className="w-10 h-10 flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-full transition-colors">
                                             <FiMinus size={16} />
                                         </button>
@@ -315,22 +326,32 @@ export default function ProductDetails() {
                                         </button>
                                     </div>
 
-                                    <MagneticButton className="flex-1 min-w-[180px]">
+                                    <MagneticButton className="flex-1 min-w-[150px]">
                                         <button onClick={handleAddToCart} className="w-full h-14 bg-stone-900 text-white rounded-full text-sm font-bold tracking-widest uppercase hover:bg-stone-800 transition-colors shadow-xl shadow-stone-900/20 flex items-center justify-center gap-2">
                                             <FiShoppingBag size={18} /> Add to Bag
                                         </button>
                                     </MagneticButton>
 
-                                    <button
-                                        onClick={handleWishlistToggle}
-                                        className={`w-14 h-14 flex-shrink-0 border rounded-full flex items-center justify-center transition-all ${isWishlisted ? 'border-red-200 bg-red-50 text-red-500' : 'border-stone-200 text-stone-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50'}`}
-                                        aria-label="Add to Wishlist"
-                                    >
-                                        <FiHeart size={22} className={isWishlisted ? 'fill-current' : ''} />
-                                    </button>
+                                    <div className="flex gap-3 flex-shrink-0">
+                                        <button
+                                            onClick={handleWishlistToggle}
+                                            className={`w-14 h-14 flex-shrink-0 border rounded-full flex items-center justify-center transition-all ${isWishlisted ? 'border-red-200 bg-red-50 text-red-500' : 'border-stone-200 text-stone-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50'}`}
+                                            aria-label="Add to Wishlist"
+                                        >
+                                            <FiHeart size={22} className={isWishlisted ? 'fill-current' : ''} />
+                                        </button>
+                                        
+                                        {/* 🔥 NEW: SHARE BUTTON */}
+                                        <button
+                                            onClick={handleShare}
+                                            className="w-14 h-14 flex-shrink-0 border border-stone-200 rounded-full flex items-center justify-center text-stone-500 hover:text-stone-900 hover:border-stone-400 hover:bg-stone-50 transition-all shadow-sm"
+                                            aria-label="Share Product"
+                                        >
+                                            <FiShare2 size={20} />
+                                        </button>
+                                    </div>
                                 </div>
 
-                                {/* Dynamic Trust Badges */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-5 gap-x-6 pt-8 mt-8 border-t border-stone-100">
                                     <div className="flex items-center gap-4 text-stone-600">
                                         <div className="w-12 h-12 rounded-full bg-stone-50 flex items-center justify-center text-stone-900 border border-stone-100">
@@ -338,8 +359,7 @@ export default function ProductDetails() {
                                         </div>
                                         <div>
                                             <h4 className="text-xs font-bold uppercase tracking-widest text-stone-900 leading-tight">Free Shipping</h4>
-                                            {/* 🔥 UPDATED: Perfectly converting global currency for Shipping Threshold */}
-                                            <p className="text-xs text-stone-500 mt-1">On orders over {convertPrice(freeShippingThreshold || 4999)}</p>
+                                            <p className="text-xs text-stone-500 mt-1">On orders over {convertPrice(freeShippingThreshold || 0)}</p>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-4 text-stone-600">
@@ -355,7 +375,6 @@ export default function ProductDetails() {
                             </div>
                         )}
 
-                        {/* REVIEWS TAB */}
                         {activeTab === 'reviews' && (
                             <div className="flex-1 flex flex-col animate-fade-in h-full">
                                 <div className="flex-1 overflow-y-auto pr-3 space-y-6 mb-8 max-h-[450px] hide-scrollbar">
@@ -380,7 +399,6 @@ export default function ProductDetails() {
                                     )}
                                 </div>
 
-                                {/* Write Review Form */}
                                 <div className="bg-stone-50 p-6 sm:p-8 rounded-3xl border border-stone-100 mt-auto">
                                     <h4 className="text-xs font-bold tracking-widest uppercase text-stone-900 mb-5">Write a Review</h4>
                                     <form onSubmit={submitReview}>
@@ -408,7 +426,6 @@ export default function ProductDetails() {
                 </div>
             </div>
 
-            {/* 🔥 LUXURY SIZE GUIDE MODAL */}
             {isSizeGuideOpen && (
                 <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-fade-in">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-stone-100">

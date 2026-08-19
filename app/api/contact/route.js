@@ -1,25 +1,54 @@
 export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs'; // 🔥 Added Node.js runtime for Vercel consistency
+export const runtime = 'nodejs'; // 櫨 Added Node.js runtime for Vercel consistency
 
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
-import { createClient } from '@supabase/supabase-js'; 
-import crypto from 'crypto'; // 🔥 Added for unique text ID generation
+import { createClient } from '@supabase/supabase-js';
+import crypto from 'crypto'; // 櫨 Added for unique text ID generation
 
 // Initialize Supabase
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// 🔥 IN-MEMORY RATE LIMITER (Spam Protection)
+const rateLimitMap = new Map();
+
 export async function POST(req) {
     try {
+        // 🔥 SPAM PROTECTION LOGIC START
+        // 1. IP एड्रेस निकालें
+        const ip = req.headers.get('x-forwarded-for') || 'unknown-ip';
+        const currentTime = Date.now();
+
+        // 2. चेक करें कि इस IP ने पिछले 1 मिनट (60000 ms) में कितनी रिक्वेस्ट भेजी हैं
+        if (rateLimitMap.has(ip)) {
+            const userData = rateLimitMap.get(ip);
+            const recentRequests = userData.filter(time => currentTime - time < 60000);
+
+            // अगर 1 मिनट में 3 से ज़्यादा रिक्वेस्ट हैं, तो ब्लॉक कर दें! (429 Too Many Requests)
+            if (recentRequests.length >= 3) {
+                return NextResponse.json(
+                    { error: 'Too many requests. Please wait a minute before trying again.' },
+                    { status: 429 }
+                );
+            }
+
+            recentRequests.push(currentTime);
+            rateLimitMap.set(ip, recentRequests);
+        } else {
+            rateLimitMap.set(ip, [currentTime]);
+        }
+        // 🔥 SPAM PROTECTION LOGIC END
+
+
         const { firstName, lastName, email, phone, subject, message } = await req.json();
 
         const senderName = `${firstName} ${lastName}`.trim();
 
-        // 🔥 STEP 1: SAVE INQUIRY TO DATABASE FOR ADMIN PANEL
+        // 櫨 STEP 1: SAVE INQUIRY TO DATABASE FOR ADMIN PANEL
         const { error: dbError } = await supabase.from('inquiries').insert([{
-            id: crypto.randomUUID(), // 🔥 FIX: Automatically generates a unique text ID
+            id: crypto.randomUUID(), // 櫨 FIX: Automatically generates a unique text ID
             sender: senderName,
             email: email,
             phone: phone || '',
@@ -34,7 +63,7 @@ export async function POST(req) {
             console.error("Supabase Save Error:", dbError);
         }
 
-        // 🔥 STEP 2: SEND PREMIUM EMAIL NOTIFICATION
+        // 櫨 STEP 2: SEND PREMIUM EMAIL NOTIFICATION
         const transporter = nodemailer.createTransport({
             service: 'gmail',
             auth: {

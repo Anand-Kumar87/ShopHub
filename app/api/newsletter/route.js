@@ -10,8 +10,36 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// 🔥 IN-MEMORY RATE LIMITER (Spam Protection)
+const rateLimitMap = new Map();
+
 export async function POST(req) {
     try {
+        // 🔥 SPAM PROTECTION LOGIC START
+        // 1. IP एड्रेस निकालें
+        const ip = req.headers.get('x-forwarded-for') || 'unknown-ip';
+        const currentTime = Date.now();
+
+        // 2. चेक करें कि इस IP ने पिछले 1 मिनट (60000 ms) में कितनी रिक्वेस्ट भेजी हैं
+        if (rateLimitMap.has(ip)) {
+            const userData = rateLimitMap.get(ip);
+            const recentRequests = userData.filter(time => currentTime - time < 60000);
+
+            // अगर 1 मिनट में 3 से ज़्यादा रिक्वेस्ट हैं, तो ब्लॉक कर दें! (429 Too Many Requests)
+            if (recentRequests.length >= 3) {
+                return NextResponse.json(
+                    { error: 'Too many requests. Please wait a minute before trying again.' },
+                    { status: 429 }
+                );
+            }
+
+            recentRequests.push(currentTime);
+            rateLimitMap.set(ip, recentRequests);
+        } else {
+            rateLimitMap.set(ip, [currentTime]);
+        }
+        // 🔥 SPAM PROTECTION LOGIC END
+
         const { email } = await req.json();
 
         // 🔥 STEP 1: SAVE SUBSCRIBER TO DATABASE
@@ -73,10 +101,10 @@ export async function POST(req) {
         };
 
         await transporter.sendMail(mailOptions);
-        return NextResponse.json({ success: true, message: 'Subscribed successfully!' });
+        return NextResponse.json({ success: true, message: 'Subscribed successfully🥳!' });
 
     } catch (error) {
         console.error("Newsletter Email Error:", error);
         return NextResponse.json({ error: 'Subscription failed' }, { status: 500 });
-    } //new file 
+    }
 }

@@ -1501,12 +1501,12 @@ export default function AdminDashboard() {
                 </div>
             </main>
 
-            {/* --- MODALS --- */}
+  {/* --- MODALS --- */}
 
             {/* ORDER PREVIEW MODAL */}
             {isOrderModalOpen && selectedOrder && (
-                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 flex items-start justify-center p-4 pt-16 animate-fade-in overflow-y-auto pb-24 custom-scrollbar">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[95vh]">
+                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto custom-scrollbar">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[95vh] flex-shrink-0 mt-12 mb-24">
                         <div className="px-8 py-5 border-b border-stone-100 flex justify-between items-center bg-stone-50/50 sticky top-0 z-10">
                             <div>
                                 <h3 className="text-xl font-light text-stone-900">
@@ -1642,9 +1642,8 @@ export default function AdminDashboard() {
 
             {/* CUSTOMER PREVIEW MODAL */}
             {isCustomerModalOpen && selectedCustomer && (
-                // <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
-                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 flex items-start justify-center p-4 pt-16 animate-fade-in overflow-y-auto pb-24 custom-scrollbar">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-stone-100">
+                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto custom-scrollbar">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-stone-100 flex-shrink-0 mt-12 mb-24">
                         <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
                             <h3 className="text-xl font-light text-stone-900">Client <span className="font-serif italic font-bold">Profile</span></h3>
                             <button
@@ -1694,8 +1693,8 @@ export default function AdminDashboard() {
 
             {/* ADD OR EDIT CLIENT MODAL */}
             {isNewCustomerModalOpen && (
-                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-stone-100">
+                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-start justify-center p-4 overflow-y-auto custom-scrollbar">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-stone-100 flex-shrink-0 mt-12 mb-24">
                         <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
                             <h3 className="text-xl font-light text-stone-900">{customerForm.id ? 'Edit' : 'Add'} <span className="font-serif italic font-bold">Client</span></h3>
                             <button
@@ -1762,8 +1761,8 @@ export default function AdminDashboard() {
 
             {/* PRODUCT CRUD MODAL */}
             {isProductModalOpen && (
-                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in" onPaste={(e) => handlePaste(e, false)}>
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[95vh]">
+                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto custom-scrollbar" onPaste={(e) => handlePaste(e, false)}>
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[95vh] flex-shrink-0 mt-12 mb-24">
                         <div className="px-8 py-5 border-b border-stone-100 flex justify-between items-center bg-stone-50/50 sticky top-0 z-10">
                             <div>
                                 <h3 className="text-xl font-light text-stone-900">{selectedProduct ? 'Edit' : 'Curate'} <span className="font-serif italic font-bold">Piece</span></h3>
@@ -1981,8 +1980,8 @@ export default function AdminDashboard() {
 
             {/* UPGRADED CATEGORY MODAL WITH ITEM SELECTION */}
             {isCategoryModalOpen && (
-                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in" onPaste={(e) => handlePaste(e, true)}>
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-stone-100 flex flex-col max-h-[90vh]">
+                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-start justify-center p-4 overflow-y-auto custom-scrollbar" onPaste={(e) => handlePaste(e, true)}>
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-stone-100 flex flex-col max-h-[90vh] flex-shrink-0 mt-12 mb-24">
                         <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
                             <h3 className="text-xl font-light text-stone-900">{selectedCategory ? 'Edit' : 'New'} <span className="font-serif italic font-bold">Collection</span></h3>
                             <button
@@ -2109,8 +2108,8 @@ export default function AdminDashboard() {
 
             {/* 🔥 UPDATED COUPON MODAL */}
             {isCouponModalOpen && (
-                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-stone-100">
+                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-start justify-center p-4 overflow-y-auto custom-scrollbar">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-stone-100 flex-shrink-0 mt-12 mb-24">
                         <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
                             <h3 className="text-xl font-light text-stone-900">{selectedCoupon ? 'Edit' : 'New'} <span className="font-serif italic font-bold">Promo Code</span></h3>
                             <button
@@ -2202,8 +2201,8 @@ export default function AdminDashboard() {
 
             {/* Message View Modal */}
             {isMessageModalOpen && selectedMessage && (
-                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 flex items-start justify-center p-4 pt-16 animate-fade-in overflow-y-auto pb-24 custom-scrollbar">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-stone-100">
+                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto custom-scrollbar">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-stone-100 flex-shrink-0 mt-12 mb-24">
                         <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
                             <h3 className="text-xl font-light text-stone-900">Client <span className="font-serif italic font-bold">Inquiry</span></h3>
                             <button

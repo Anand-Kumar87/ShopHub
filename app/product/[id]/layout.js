@@ -1,19 +1,22 @@
 import { supabase } from '../../utils/supabase';
 
+// 🔥 सबसे बड़ा फिक्स: Next.js को हमेशा LIVE डेटा लाने का आदेश दें (No Caching)
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // 🔥 1. DYNAMIC PREMIUM SEO (Meta Tags)
 export async function generateMetadata({ params }) {
-    // 🔥 FIX: Next.js में सर्वर पर params को await करना ज़रूरी है!
     const resolvedParams = await params;
     const id = resolvedParams.id;
 
     try {
-        const { data: product } = await supabase
+        const { data: product, error } = await supabase
             .from('products')
             .select('name, description, images, image')
             .eq('id', id)
             .single();
 
-        if (!product) {
+        if (error || !product) {
             return {
                 title: 'Product Not Found | ShopHub.',
                 description: 'Discover premium curated fashion at ShopHub.',
@@ -55,11 +58,9 @@ export async function generateMetadata({ params }) {
 
 // 🔥 2. JSON-LD RICH SNIPPETS (Google Search Magic)
 export default async function ProductLayout({ children, params }) {
-    // 🔥 FIX: यहाँ भी params को await करना ज़रूरी है!
     const resolvedParams = await params;
     const id = resolvedParams.id;
     
-    // अपनी Vercel वाली वेबसाइट का असली डोमेन यहाँ डालें
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://shophubstyle.vercel.app';
 
     const { data: product } = await supabase

@@ -1505,132 +1505,132 @@ export default function AdminDashboard() {
 
             {/* ORDER PREVIEW MODAL */}
             {isOrderModalOpen && selectedOrder && (
-                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6 animate-fade-in">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[90vh] overflow-hidden">
-                        <div className="px-8 py-5 border-b border-stone-100 flex justify-between items-center bg-stone-50/50 flex-shrink-0">
-                            <div>
-                                <h3 className="text-xl font-light text-stone-900">
-                                    Order <span className="font-serif italic font-bold">#{selectedOrder.orderNumber || selectedOrder.id?.toString().substring(0, 8).toUpperCase()}</span>
-                                </h3>
-                                <p className="text-[10px] font-bold tracking-widest uppercase text-stone-400 mt-1">
-                                    {safeDate(selectedOrder.created_at || selectedOrder.date || selectedOrder.orderDate)}
-                                </p>
-                            </div>
-                            <button
-                                onClick={() => setIsOrderModalOpen(false)}
-                                className="w-10 h-10 rounded-full bg-white border border-stone-200 flex items-center justify-center text-stone-500 hover:text-stone-900 transition-colors shadow-sm"
-                            >
-                                <FiX size={18} />
-                            </button>
-                        </div>
-                        <div className="overflow-y-auto p-8 custom-scrollbar grid grid-cols-1 lg:grid-cols-3 gap-10">
-
-                            <div className="lg:col-span-2 space-y-8">
+                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 overflow-y-auto custom-scrollbar animate-fade-in">
+                    <div className="flex min-h-full items-start justify-center p-4 pt-16 pb-24">
+                        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden border border-stone-100">
+                            <div className="px-8 py-5 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
                                 <div>
-                                    <h4 className="text-[10px] font-bold tracking-widest uppercase text-stone-900 border-b border-stone-200 pb-2 mb-4">Items Purchased</h4>
-                                    <div className="space-y-4">
-                                        {(selectedOrder.items || []).map((item, idx) => (
-                                            <div key={idx} className="flex gap-4">
-                                                <div className="w-16 h-20 bg-stone-100 rounded-lg overflow-hidden border border-stone-100 flex-shrink-0">
-                                                    <img src={item.image || item.images?.[0]} className="w-full h-full object-cover" alt="" />
-                                                </div>
-                                                <div className="flex-1 py-1">
-                                                    <p className="font-bold text-sm text-stone-900 line-clamp-1">{item.name}</p>
-                                                    <p className="text-xs text-stone-500 uppercase tracking-widest mb-1 mt-0.5">Qty: {item.quantity || 1}</p>
-                                                    <p className="font-medium text-sm text-stone-900">{convertPrice(safePrice(item.price))}</p>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
+                                    <h3 className="text-xl font-light text-stone-900">
+                                        Order <span className="font-serif italic font-bold">#{selectedOrder.orderNumber || selectedOrder.id?.toString().substring(0, 8).toUpperCase()}</span>
+                                    </h3>
+                                    <p className="text-[10px] font-bold tracking-widest uppercase text-stone-400 mt-1">
+                                        {safeDate(selectedOrder.created_at || selectedOrder.date || selectedOrder.orderDate)}
+                                    </p>
                                 </div>
-                                <div className="grid grid-cols-2 gap-8 pt-6 border-t border-stone-100">
-                                    <div>
-                                        <h4 className="text-[10px] font-bold tracking-widest uppercase text-stone-900 border-b border-stone-200 pb-2 mb-3">Client Info</h4>
-                                        <p className="text-sm font-bold text-stone-900 mb-1">
-                                            {selectedOrder.customerName || (selectedOrder.shipping && selectedOrder.shipping.firstName ? `${selectedOrder.shipping.firstName} ${selectedOrder.shipping.lastName || ''}` : 'Online User')}
-                                        </p>
-                                        <p className="text-xs text-stone-500">
-                                            {selectedOrder.email || selectedOrder.shipping?.email || selectedOrder.contactEmail || 'No email provided'}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <h4 className="text-[10px] font-bold tracking-widest uppercase text-stone-900 border-b border-stone-200 pb-2 mb-3">Shipping Address</h4>
-                                        <p className="text-xs text-stone-600 leading-relaxed">
-                                            {selectedOrder.shippingAddress || selectedOrder.shipping_address?.street || selectedOrder.shipping?.address || 'No address provided'} <br />
-                                            {selectedOrder.city || selectedOrder.shipping_address?.city || selectedOrder.shipping?.city}, {selectedOrder.state || selectedOrder.shipping_address?.state || selectedOrder.shipping?.state} {selectedOrder.postalCode || selectedOrder.shipping_address?.zipCode || selectedOrder.shipping?.postalCode} <br />
-                                            {COUNTRY_MAP[selectedOrder.country || selectedOrder.shipping_address?.country || selectedOrder.shipping?.country] || (selectedOrder.country || selectedOrder.shipping_address?.country || selectedOrder.shipping?.country)}
-                                        </p>
-                                    </div>
-                                </div>
+                                <button
+                                    onClick={() => setIsOrderModalOpen(false)}
+                                    className="w-10 h-10 rounded-full bg-white border border-stone-200 flex items-center justify-center text-stone-500 hover:text-stone-900 transition-colors shadow-sm"
+                                >
+                                    <FiX size={18} />
+                                </button>
                             </div>
+                            <div className="p-8 grid grid-cols-1 lg:grid-cols-3 gap-10">
 
-                            <div className="space-y-6">
-                                <div className="bg-stone-50 p-6 rounded-2xl border border-stone-100">
-                                    <h4 className="text-[10px] font-bold tracking-widest uppercase text-stone-900 border-b border-stone-200 pb-2 mb-4">Financial Summary</h4>
-                                    <div className="space-y-3 text-sm">
-                                        <div className="flex justify-between text-stone-500">
-                                            <span>Subtotal</span>
-                                            <span className="font-medium text-stone-900">{convertPrice(safePrice(selectedOrder.totals?.subtotal || selectedOrder.subtotal))}</span>
+                                <div className="lg:col-span-2 space-y-8">
+                                    <div>
+                                        <h4 className="text-[10px] font-bold tracking-widest uppercase text-stone-900 border-b border-stone-200 pb-2 mb-4">Items Purchased</h4>
+                                        <div className="space-y-4">
+                                            {(selectedOrder.items || []).map((item, idx) => (
+                                                <div key={idx} className="flex gap-4">
+                                                    <div className="w-16 h-20 bg-stone-100 rounded-lg overflow-hidden border border-stone-100 flex-shrink-0">
+                                                        <img src={item.image || item.images?.[0]} className="w-full h-full object-cover" alt="" />
+                                                    </div>
+                                                    <div className="flex-1 py-1">
+                                                        <p className="font-bold text-sm text-stone-900 line-clamp-1">{item.name}</p>
+                                                        <p className="text-xs text-stone-500 uppercase tracking-widest mb-1 mt-0.5">Qty: {item.quantity || 1}</p>
+                                                        <p className="font-medium text-sm text-stone-900">{convertPrice(safePrice(item.price))}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
-
-                                        {/* 🔥 FIX: Added Dynamic Discount Display here */}
-                                        {(safePrice(selectedOrder.totals?.discount) > 0 || selectedOrder.coupon) && (
-                                            <div className="flex justify-between text-green-600 animate-fade-in">
-                                                <span>Discount {selectedOrder.coupon ? `(${selectedOrder.coupon})` : ''}</span>
-                                                <span className="font-bold">-{convertPrice(safePrice(selectedOrder.totals?.discount))}</span>
-                                            </div>
-                                        )}
-
-                                        <div className="flex justify-between text-stone-500">
-                                            <span>Shipping</span>
-                                            <span className="font-medium text-stone-900">{convertPrice(safePrice(selectedOrder.totals?.shipping || selectedOrder.shipping))}</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-8 pt-6 border-t border-stone-100">
+                                        <div>
+                                            <h4 className="text-[10px] font-bold tracking-widest uppercase text-stone-900 border-b border-stone-200 pb-2 mb-3">Client Info</h4>
+                                            <p className="text-sm font-bold text-stone-900 mb-1">
+                                                {selectedOrder.customerName || (selectedOrder.shipping && selectedOrder.shipping.firstName ? `${selectedOrder.shipping.firstName} ${selectedOrder.shipping.lastName || ''}` : 'Online User')}
+                                            </p>
+                                            <p className="text-xs text-stone-500">
+                                                {selectedOrder.email || selectedOrder.shipping?.email || selectedOrder.contactEmail || 'No email provided'}
+                                            </p>
                                         </div>
-                                        <div className="flex justify-between text-stone-500">
-                                            <span>Tax</span>
-                                            <span className="font-medium text-stone-900">{convertPrice(safePrice(selectedOrder.totals?.tax || selectedOrder.tax))}</span>
-                                        </div>
-                                        <div className="flex justify-between pt-3 border-t border-stone-200 mt-2 font-bold text-base">
-                                            <span className="text-stone-900">Total</span>
-                                            <span className="text-stone-900">{convertPrice(safePrice(selectedOrder.totals?.total || selectedOrder.total_amount || selectedOrder.total))}</span>
+                                        <div>
+                                            <h4 className="text-[10px] font-bold tracking-widest uppercase text-stone-900 border-b border-stone-200 pb-2 mb-3">Shipping Address</h4>
+                                            <p className="text-xs text-stone-600 leading-relaxed">
+                                                {selectedOrder.shippingAddress || selectedOrder.shipping_address?.street || selectedOrder.shipping?.address || 'No address provided'} <br />
+                                                {selectedOrder.city || selectedOrder.shipping_address?.city || selectedOrder.shipping?.city}, {selectedOrder.state || selectedOrder.shipping_address?.state || selectedOrder.shipping?.state} {selectedOrder.postalCode || selectedOrder.shipping_address?.zipCode || selectedOrder.shipping?.postalCode} <br />
+                                                {COUNTRY_MAP[selectedOrder.country || selectedOrder.shipping_address?.country || selectedOrder.shipping?.country] || (selectedOrder.country || selectedOrder.shipping_address?.country || selectedOrder.shipping?.country)}
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Logistics Status</label>
-                                        <select
-                                            value={selectedOrder.status || 'Processing'}
-                                            onChange={(e) => updateOrderStatus(selectedOrder.id || selectedOrder.orderNumber, 'status', e.target.value)}
-                                            className="w-full px-4 py-3 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm font-bold text-stone-900"
-                                        >
-                                            <option value="Processing">Processing</option>
-                                            <option value="Shipped">Shipped</option>
-                                            <option value="Delivered">Delivered</option>
-                                            <option value="Cancelled">Cancelled</option>
-                                        </select>
+                                <div className="space-y-6">
+                                    <div className="bg-stone-50 p-6 rounded-2xl border border-stone-100">
+                                        <h4 className="text-[10px] font-bold tracking-widest uppercase text-stone-900 border-b border-stone-200 pb-2 mb-4">Financial Summary</h4>
+                                        <div className="space-y-3 text-sm">
+                                            <div className="flex justify-between text-stone-500">
+                                                <span>Subtotal</span>
+                                                <span className="font-medium text-stone-900">{convertPrice(safePrice(selectedOrder.totals?.subtotal || selectedOrder.subtotal))}</span>
+                                            </div>
+
+                                            {(safePrice(selectedOrder.totals?.discount) > 0 || selectedOrder.coupon) && (
+                                                <div className="flex justify-between text-green-600 animate-fade-in">
+                                                    <span>Discount {selectedOrder.coupon ? `(${selectedOrder.coupon})` : ''}</span>
+                                                    <span className="font-bold">-{convertPrice(safePrice(selectedOrder.totals?.discount))}</span>
+                                                </div>
+                                            )}
+
+                                            <div className="flex justify-between text-stone-500">
+                                                <span>Shipping</span>
+                                                <span className="font-medium text-stone-900">{convertPrice(safePrice(selectedOrder.totals?.shipping || selectedOrder.shipping))}</span>
+                                            </div>
+                                            <div className="flex justify-between text-stone-500">
+                                                <span>Tax</span>
+                                                <span className="font-medium text-stone-900">{convertPrice(safePrice(selectedOrder.totals?.tax || selectedOrder.tax))}</span>
+                                            </div>
+                                            <div className="flex justify-between pt-3 border-t border-stone-200 mt-2 font-bold text-base">
+                                                <span className="text-stone-900">Total</span>
+                                                <span className="text-stone-900">{convertPrice(safePrice(selectedOrder.totals?.total || selectedOrder.total_amount || selectedOrder.total))}</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Payment Status</label>
-                                        <select
-                                            value={selectedOrder.paymentStatus || 'Unpaid'}
-                                            onChange={(e) => updateOrderStatus(selectedOrder.id || selectedOrder.orderNumber, 'paymentStatus', e.target.value)}
-                                            className="w-full px-4 py-3 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm font-bold text-stone-900"
-                                        >
-                                            <option value="Unpaid">Unpaid</option>
-                                            <option value="Paid">Mark as Paid</option>
-                                            <option value="Refunded">Refunded</option>
-                                            <option value="Cancelled">Cancelled</option>
-                                        </select>
-                                    </div>
-                                    {/* 🔥 FIX: ADDED PAYMENT METHOD DISPLAY IN ADMIN PANEL */}
-                                    <div className="bg-white border border-stone-200 p-4 rounded-xl mt-4">
-                                        <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-1">Payment Method Used</label>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            {getPaymentIcon(selectedOrder.payment_method || selectedOrder.payment?.method)}
-                                            <span className="text-sm font-bold text-stone-900 uppercase tracking-widest">
-                                                {selectedOrder.payment_method || selectedOrder.payment?.method || 'Standard'}
-                                            </span>
+
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Logistics Status</label>
+                                            <select
+                                                value={selectedOrder.status || 'Processing'}
+                                                onChange={(e) => updateOrderStatus(selectedOrder.id || selectedOrder.orderNumber, 'status', e.target.value)}
+                                                className="w-full px-4 py-3 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm font-bold text-stone-900"
+                                            >
+                                                <option value="Processing">Processing</option>
+                                                <option value="Shipped">Shipped</option>
+                                                <option value="Delivered">Delivered</option>
+                                                <option value="Cancelled">Cancelled</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Payment Status</label>
+                                            <select
+                                                value={selectedOrder.paymentStatus || 'Unpaid'}
+                                                onChange={(e) => updateOrderStatus(selectedOrder.id || selectedOrder.orderNumber, 'paymentStatus', e.target.value)}
+                                                className="w-full px-4 py-3 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm font-bold text-stone-900"
+                                            >
+                                                <option value="Unpaid">Unpaid</option>
+                                                <option value="Paid">Mark as Paid</option>
+                                                <option value="Refunded">Refunded</option>
+                                                <option value="Cancelled">Cancelled</option>
+                                            </select>
+                                        </div>
+                                        <div className="bg-white border border-stone-200 p-4 rounded-xl mt-4">
+                                            <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-1">Payment Method Used</label>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                {getPaymentIcon(selectedOrder.payment_method || selectedOrder.payment?.method)}
+                                                <span className="text-sm font-bold text-stone-900 uppercase tracking-widest">
+                                                    {selectedOrder.payment_method || selectedOrder.payment?.method || 'Standard'}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -1642,49 +1642,51 @@ export default function AdminDashboard() {
 
             {/* CUSTOMER PREVIEW MODAL */}
             {isCustomerModalOpen && selectedCustomer && (
-                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6 animate-fade-in">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh] overflow-hidden border border-stone-100">
-                        <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50 flex-shrink-0">
-                            <h3 className="text-xl font-light text-stone-900">Client <span className="font-serif italic font-bold">Profile</span></h3>
-                            <button
-                                onClick={() => setIsCustomerModalOpen(false)}
-                                className="w-8 h-8 rounded-full bg-white border border-stone-200 flex items-center justify-center text-stone-500 hover:text-stone-900 transition-colors"
-                            >
-                                <FiX size={16} />
-                            </button>
-                        </div>
-                        <div className="p-8 overflow-y-auto custom-scrollbar">
-                            <div className="flex items-center gap-5 mb-8">
-                                <div className="w-16 h-16 bg-stone-900 text-white rounded-full flex items-center justify-center font-serif italic font-bold text-2xl">
-                                    {selectedCustomer.name.charAt(0)}
-                                </div>
-                                <div>
-                                    <h4 className="text-lg font-bold text-stone-900">{selectedCustomer.name}</h4>
-                                    <p className="text-sm text-stone-500">{selectedCustomer.email}</p>
-                                    <p className="text-[10px] font-bold tracking-widest uppercase text-stone-400 mt-1">
-                                        Client since {new Date(selectedCustomer.joined || selectedCustomer.created_at).getFullYear()}
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4 mb-8">
-                                <div className="bg-stone-50 p-5 rounded-2xl border border-stone-100">
-                                    <FiShoppingBag className="text-stone-400 mb-2" size={16} />
-                                    <p className="text-2xl font-light text-stone-900 mb-1">{selectedCustomer.orders}</p>
-                                    <p className="text-[10px] font-bold tracking-widest uppercase text-stone-500">Total Orders</p>
-                                </div>
-                                <div className="bg-stone-50 p-5 rounded-2xl border border-stone-100">
-                                    <FiTag className="text-stone-400 mb-2" size={16} />
-                                    <p className="text-2xl font-light text-stone-900 mb-1">{convertPrice(safePrice(selectedCustomer.spent))}</p>
-                                    <p className="text-[10px] font-bold tracking-widest uppercase text-stone-500">Lifetime Value</p>
-                                </div>
-                            </div>
-                            <div className="flex justify-end pt-4 border-t border-stone-100">
-                                <a
-                                    href={`mailto:${selectedCustomer.email}`}
-                                    className="px-6 py-3 bg-stone-900 text-white rounded-full hover:bg-stone-800 text-xs font-bold tracking-widest uppercase shadow-lg shadow-stone-900/10 transition-colors flex items-center gap-2"
+                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 overflow-y-auto custom-scrollbar animate-fade-in">
+                    <div className="flex min-h-full items-start justify-center p-4 pt-16 pb-24">
+                        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-stone-100">
+                            <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
+                                <h3 className="text-xl font-light text-stone-900">Client <span className="font-serif italic font-bold">Profile</span></h3>
+                                <button
+                                    onClick={() => setIsCustomerModalOpen(false)}
+                                    className="w-8 h-8 rounded-full bg-white border border-stone-200 flex items-center justify-center text-stone-500 hover:text-stone-900 transition-colors"
                                 >
-                                    <FiMail size={14} /> Contact Client
-                                </a>
+                                    <FiX size={16} />
+                                </button>
+                            </div>
+                            <div className="p-8">
+                                <div className="flex items-center gap-5 mb-8">
+                                    <div className="w-16 h-16 bg-stone-900 text-white rounded-full flex items-center justify-center font-serif italic font-bold text-2xl">
+                                        {selectedCustomer.name.charAt(0)}
+                                    </div>
+                                    <div>
+                                        <h4 className="text-lg font-bold text-stone-900">{selectedCustomer.name}</h4>
+                                        <p className="text-sm text-stone-500">{selectedCustomer.email}</p>
+                                        <p className="text-[10px] font-bold tracking-widest uppercase text-stone-400 mt-1">
+                                            Client since {new Date(selectedCustomer.joined || selectedCustomer.created_at).getFullYear()}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4 mb-8">
+                                    <div className="bg-stone-50 p-5 rounded-2xl border border-stone-100">
+                                        <FiShoppingBag className="text-stone-400 mb-2" size={16} />
+                                        <p className="text-2xl font-light text-stone-900 mb-1">{selectedCustomer.orders}</p>
+                                        <p className="text-[10px] font-bold tracking-widest uppercase text-stone-500">Total Orders</p>
+                                    </div>
+                                    <div className="bg-stone-50 p-5 rounded-2xl border border-stone-100">
+                                        <FiTag className="text-stone-400 mb-2" size={16} />
+                                        <p className="text-2xl font-light text-stone-900 mb-1">{convertPrice(safePrice(selectedCustomer.spent))}</p>
+                                        <p className="text-[10px] font-bold tracking-widest uppercase text-stone-500">Lifetime Value</p>
+                                    </div>
+                                </div>
+                                <div className="flex justify-end pt-4 border-t border-stone-100">
+                                    <a
+                                        href={`mailto:${selectedCustomer.email}`}
+                                        className="px-6 py-3 bg-stone-900 text-white rounded-full hover:bg-stone-800 text-xs font-bold tracking-widest uppercase shadow-lg shadow-stone-900/10 transition-colors flex items-center gap-2"
+                                    >
+                                        <FiMail size={14} /> Contact Client
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1693,18 +1695,18 @@ export default function AdminDashboard() {
 
             {/* ADD OR EDIT CLIENT MODAL */}
             {isNewCustomerModalOpen && (
-                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4 sm:p-6 animate-fade-in">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh] overflow-hidden border border-stone-100">
-                        <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50 flex-shrink-0">
-                            <h3 className="text-xl font-light text-stone-900">{customerForm.id ? 'Edit' : 'Add'} <span className="font-serif italic font-bold">Client</span></h3>
-                            <button
-                                onClick={() => setIsNewCustomerModalOpen(false)}
-                                className="w-8 h-8 rounded-full bg-white border border-stone-200 flex items-center justify-center text-stone-500 hover:text-stone-900 transition-colors"
-                            >
-                                <FiX size={16} />
-                            </button>
-                        </div>
-                        <div className="overflow-y-auto custom-scrollbar">
+                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 overflow-y-auto custom-scrollbar animate-fade-in">
+                    <div className="flex min-h-full items-start justify-center p-4 pt-16 pb-24">
+                        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-stone-100">
+                            <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
+                                <h3 className="text-xl font-light text-stone-900">{customerForm.id ? 'Edit' : 'Add'} <span className="font-serif italic font-bold">Client</span></h3>
+                                <button
+                                    onClick={() => setIsNewCustomerModalOpen(false)}
+                                    className="w-8 h-8 rounded-full bg-white border border-stone-200 flex items-center justify-center text-stone-500 hover:text-stone-900 transition-colors"
+                                >
+                                    <FiX size={16} />
+                                </button>
+                            </div>
                             <form onSubmit={handleNewCustomerSubmit} className="p-8 space-y-6">
                                 <div>
                                     <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Full Name *</label>
@@ -1763,218 +1765,220 @@ export default function AdminDashboard() {
 
             {/* PRODUCT CRUD MODAL */}
             {isProductModalOpen && (
-                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6 animate-fade-in" onPaste={(e) => handlePaste(e, false)}>
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl flex flex-col max-h-[90vh] overflow-hidden">
-                        <div className="px-8 py-5 border-b border-stone-100 flex justify-between items-center bg-stone-50/50 flex-shrink-0">
-                            <div>
-                                <h3 className="text-xl font-light text-stone-900">{selectedProduct ? 'Edit' : 'Curate'} <span className="font-serif italic font-bold">Piece</span></h3>
-                                <p className="text-[10px] font-bold tracking-widest uppercase text-stone-400 mt-1">Full Management Interface</p>
-                            </div>
-                            <button
-                                onClick={() => setIsProductModalOpen(false)}
-                                className="w-10 h-10 rounded-full bg-white border border-stone-200 flex items-center justify-center text-stone-500 hover:text-stone-900 transition-colors shadow-sm"
-                            >
-                                <FiX size={18} />
-                            </button>
-                        </div>
-                        <div className="overflow-y-auto p-8 custom-scrollbar relative">
-                            <form onSubmit={handleProductSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                                {/* LEFT COLUMN */}
-                                <div className="space-y-6">
-                                    <h4 className="text-[10px] font-bold tracking-widest uppercase text-stone-900 border-b border-stone-200 pb-2">Primary Details</h4>
-                                    <div>
-                                        <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Piece Name *</label>
-                                        <input
-                                            required
-                                            type="text"
-                                            value={productForm.name}
-                                            onChange={e => setProductForm({ ...productForm, name: e.target.value })}
-                                            className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 focus:bg-white transition-colors text-sm font-bold text-stone-900"
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-6">
-                                        <div>
-                                            <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Reference SKU</label>
-                                            <input
-                                                type="text"
-                                                value={productForm.sku}
-                                                onChange={e => setProductForm({ ...productForm, sku: e.target.value })}
-                                                className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 focus:bg-white transition-colors text-sm font-mono"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Collection</label>
-                                            <select
-                                                value={productForm.category}
-                                                onChange={e => setProductForm({ ...productForm, category: e.target.value })}
-                                                className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 focus:bg-white transition-colors text-sm appearance-none"
-                                            >
-                                                <option value="">Select Collection</option>
-                                                {categories.map(cat => (
-                                                    <option key={cat.id} value={cat.slug}>{cat.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Description</label>
-                                        <textarea
-                                            rows="4"
-                                            value={productForm.description || ''}
-                                            onChange={e => setProductForm({ ...productForm, description: e.target.value })}
-                                            className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 focus:bg-white transition-colors text-sm resize-none"
-                                        ></textarea>
-                                    </div>
-
-                                    {/* VARIANTS SECTION */}
-                                    <h4 className="text-[10px] font-bold tracking-widest uppercase text-stone-900 border-b border-stone-200 pb-2 mt-8">Variants (Optional)</h4>
-                                    <div className="grid grid-cols-2 gap-6">
-                                        <div>
-                                            <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Colors (Hex/Name, comma separated)</label>
-                                            <input
-                                                type="text"
-                                                value={productForm.colors || ''}
-                                                onChange={e => setProductForm({ ...productForm, colors: e.target.value })}
-                                                className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 focus:bg-white transition-colors text-sm"
-                                                placeholder="#000000, #FFFFFF, Red"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Sizes (comma separated)</label>
-                                            <input
-                                                type="text"
-                                                value={productForm.sizes || ''}
-                                                onChange={e => setProductForm({ ...productForm, sizes: e.target.value })}
-                                                className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 focus:bg-white transition-colors text-sm"
-                                                placeholder="S, M, L, XL"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <h4 className="text-[10px] font-bold tracking-widest uppercase text-stone-900 border-b border-stone-200 pb-2 mt-8">Pricing & Inventory</h4>
-                                    <div className="grid grid-cols-2 gap-6">
-                                        <div>
-                                            <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Base Price (INR) *</label>
-                                            <input
-                                                required
-                                                type="number"
-                                                step="0.01"
-                                                value={productForm.price || 0}
-                                                onChange={e => setProductForm({ ...productForm, price: Number(e.target.value) })}
-                                                className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 focus:bg-white transition-colors text-sm font-bold"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Stock Level (Pcs) *</label>
-                                            <input
-                                                required
-                                                type="number"
-                                                value={productForm.stock || 0}
-                                                onChange={e => setProductForm({ ...productForm, stock: Number(e.target.value) })}
-                                                className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 focus:bg-white transition-colors text-sm"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-6 items-start">
-                                        <div className="bg-stone-50 p-4 rounded-xl border border-stone-100">
-                                            <div className="flex items-center justify-between mb-3">
-                                                <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-900">Put on Sale</label>
-                                                <label className="relative inline-flex items-center cursor-pointer">
-                                                    <input
-                                                        type="checkbox"
-                                                        className="sr-only peer"
-                                                        checked={productForm.onSale || false}
-                                                        onChange={e => setProductForm({ ...productForm, onSale: e.target.checked })}
-                                                    />
-                                                    <div className="w-9 h-5 bg-stone-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-stone-900"></div>
-                                                </label>
-                                            </div>
-                                            {productForm.onSale && (
-                                                <div className="animate-fade-in mt-2">
-                                                    <label className="block text-[9px] font-bold tracking-widest uppercase text-red-50 mb-1">Sale Price (INR)</label>
-                                                    <input
-                                                        type="number"
-                                                        step="0.01"
-                                                        value={productForm.salePrice || 0}
-                                                        onChange={e => setProductForm({ ...productForm, salePrice: Number(e.target.value) })}
-                                                        className="w-full px-3 py-2 bg-white border border-stone-200 rounded-md focus:outline-none focus:border-red-500 text-sm font-bold text-red-600"
-                                                    />
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div>
-                                            <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Product Status</label>
-                                            <select
-                                                value={productForm.status || 'active'}
-                                                onChange={e => setProductForm({ ...productForm, status: e.target.value })}
-                                                className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 focus:bg-white transition-colors text-sm appearance-none font-bold"
-                                            >
-                                                <option value="active">Active (Live)</option>
-                                                <option value="draft">Draft (Hidden)</option>
-                                                <option value="archived">Archived</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* RIGHT COLUMN: Media */}
+                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 overflow-y-auto custom-scrollbar animate-fade-in" onPaste={(e) => handlePaste(e, false)}>
+                    <div className="flex min-h-full items-start justify-center p-4 pt-16 pb-24">
+                        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden border border-stone-100">
+                            <div className="px-8 py-5 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
                                 <div>
-                                    <h4 className="text-[10px] font-bold tracking-widest uppercase text-stone-900 border-b border-stone-200 pb-2 mb-6">Media Gallery</h4>
-                                    <div
-                                        className="border-2 border-dashed border-stone-200 rounded-2xl p-10 text-center bg-stone-50 hover:bg-stone-100 hover:border-stone-300 transition-colors cursor-pointer flex flex-col items-center justify-center mb-6"
-                                        onClick={() => productFileInputRef.current.click()}
-                                    >
-                                        <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
-                                            <FiUploadCloud size={24} className="text-stone-400" />
-                                        </div>
-                                        <p className="text-sm font-bold text-stone-900 mb-1">Click to Upload</p>
-                                        <p className="text-xs text-stone-500 mb-3">Or <kbd className="bg-white border border-stone-200 px-2 py-0.5 rounded-md font-mono text-[10px]">Ctrl+V</kbd> anywhere to paste.</p>
-                                        <input
-                                            type="file"
-                                            multiple
-                                            accept="image/*"
-                                            className="hidden"
-                                            ref={productFileInputRef}
-                                            onChange={(e) => handleImageUpload(e, false)}
-                                        />
-                                        <span className="bg-stone-900 text-white text-[10px] font-bold tracking-widest uppercase px-4 py-2 rounded-full">Select Files</span>
-                                    </div>
-                                    {productForm.images.length > 0 && (
+                                    <h3 className="text-xl font-light text-stone-900">{selectedProduct ? 'Edit' : 'Curate'} <span className="font-serif italic font-bold">Piece</span></h3>
+                                    <p className="text-[10px] font-bold tracking-widest uppercase text-stone-400 mt-1">Full Management Interface</p>
+                                </div>
+                                <button
+                                    onClick={() => setIsProductModalOpen(false)}
+                                    className="w-10 h-10 rounded-full bg-white border border-stone-200 flex items-center justify-center text-stone-500 hover:text-stone-900 transition-colors shadow-sm"
+                                >
+                                    <FiX size={18} />
+                                </button>
+                            </div>
+                            <div className="p-8">
+                                <form onSubmit={handleProductSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                                    {/* LEFT COLUMN */}
+                                    <div className="space-y-6">
+                                        <h4 className="text-[10px] font-bold tracking-widest uppercase text-stone-900 border-b border-stone-200 pb-2">Primary Details</h4>
                                         <div>
-                                            <p className="text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-3">Selected Images ({productForm.images.length})</p>
-                                            <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
-                                                {productForm.images.map((imgSrc, idx) => (
-                                                    <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-stone-200 group bg-stone-100">
-                                                        <img src={imgSrc} alt={`Preview ${idx}`} className="w-full h-full object-cover" />
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => { e.stopPropagation(); removeProductImage(idx); }}
-                                                            className="absolute top-2 right-2 w-6 h-6 bg-white/90 text-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500 hover:text-white shadow-sm"
-                                                        >
-                                                            <FiTrash2 size={12} />
-                                                        </button>
-                                                    </div>
-                                                ))}
+                                            <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Piece Name *</label>
+                                            <input
+                                                required
+                                                type="text"
+                                                value={productForm.name}
+                                                onChange={e => setProductForm({ ...productForm, name: e.target.value })}
+                                                className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 focus:bg-white transition-colors text-sm font-bold text-stone-900"
+                                            />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-6">
+                                            <div>
+                                                <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Reference SKU</label>
+                                                <input
+                                                    type="text"
+                                                    value={productForm.sku}
+                                                    onChange={e => setProductForm({ ...productForm, sku: e.target.value })}
+                                                    className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 focus:bg-white transition-colors text-sm font-mono"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Collection</label>
+                                                <select
+                                                    value={productForm.category}
+                                                    onChange={e => setProductForm({ ...productForm, category: e.target.value })}
+                                                    className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 focus:bg-white transition-colors text-sm appearance-none"
+                                                >
+                                                    <option value="">Select Collection</option>
+                                                    {categories.map(cat => (
+                                                        <option key={cat.id} value={cat.slug}>{cat.name}</option>
+                                                    ))}
+                                                </select>
                                             </div>
                                         </div>
-                                    )}
-                                </div>
-                                <div className="lg:col-span-2 pt-6 flex justify-end gap-4 border-t border-stone-100 mt-4 sticky bottom-0 bg-white/90 backdrop-blur-md py-4">
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsProductModalOpen(false)}
-                                        className="px-8 py-3.5 border border-stone-200 rounded-full text-stone-900 hover:bg-stone-50 text-xs font-bold tracking-widest uppercase transition-colors"
-                                    >
-                                        Discard
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        className="px-10 py-3.5 bg-stone-900 text-white rounded-full hover:bg-stone-800 text-xs font-bold tracking-widest uppercase shadow-xl shadow-stone-900/20 transition-colors flex items-center gap-2"
-                                    >
-                                        <FiCheck size={16} /> Save Product
-                                    </button>
-                                </div>
-                            </form>
+                                        <div>
+                                            <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Description</label>
+                                            <textarea
+                                                rows="4"
+                                                value={productForm.description || ''}
+                                                onChange={e => setProductForm({ ...productForm, description: e.target.value })}
+                                                className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 focus:bg-white transition-colors text-sm resize-none"
+                                            ></textarea>
+                                        </div>
+
+                                        {/* VARIANTS SECTION */}
+                                        <h4 className="text-[10px] font-bold tracking-widest uppercase text-stone-900 border-b border-stone-200 pb-2 mt-8">Variants (Optional)</h4>
+                                        <div className="grid grid-cols-2 gap-6">
+                                            <div>
+                                                <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Colors (Hex/Name, comma separated)</label>
+                                                <input
+                                                    type="text"
+                                                    value={productForm.colors || ''}
+                                                    onChange={e => setProductForm({ ...productForm, colors: e.target.value })}
+                                                    className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 focus:bg-white transition-colors text-sm"
+                                                    placeholder="#000000, #FFFFFF, Red"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Sizes (comma separated)</label>
+                                                <input
+                                                    type="text"
+                                                    value={productForm.sizes || ''}
+                                                    onChange={e => setProductForm({ ...productForm, sizes: e.target.value })}
+                                                    className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 focus:bg-white transition-colors text-sm"
+                                                    placeholder="S, M, L, XL"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <h4 className="text-[10px] font-bold tracking-widest uppercase text-stone-900 border-b border-stone-200 pb-2 mt-8">Pricing & Inventory</h4>
+                                        <div className="grid grid-cols-2 gap-6">
+                                            <div>
+                                                <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Base Price (INR) *</label>
+                                                <input
+                                                    required
+                                                    type="number"
+                                                    step="0.01"
+                                                    value={productForm.price || 0}
+                                                    onChange={e => setProductForm({ ...productForm, price: Number(e.target.value) })}
+                                                    className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 focus:bg-white transition-colors text-sm font-bold"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Stock Level (Pcs) *</label>
+                                                <input
+                                                    required
+                                                    type="number"
+                                                    value={productForm.stock || 0}
+                                                    onChange={e => setProductForm({ ...productForm, stock: Number(e.target.value) })}
+                                                    className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 focus:bg-white transition-colors text-sm"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-6 items-start">
+                                            <div className="bg-stone-50 p-4 rounded-xl border border-stone-100">
+                                                <div className="flex items-center justify-between mb-3">
+                                                    <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-900">Put on Sale</label>
+                                                    <label className="relative inline-flex items-center cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="sr-only peer"
+                                                            checked={productForm.onSale || false}
+                                                            onChange={e => setProductForm({ ...productForm, onSale: e.target.checked })}
+                                                        />
+                                                        <div className="w-9 h-5 bg-stone-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-stone-900"></div>
+                                                    </label>
+                                                </div>
+                                                {productForm.onSale && (
+                                                    <div className="animate-fade-in mt-2">
+                                                        <label className="block text-[9px] font-bold tracking-widest uppercase text-red-50 mb-1">Sale Price (INR)</label>
+                                                        <input
+                                                            type="number"
+                                                            step="0.01"
+                                                            value={productForm.salePrice || 0}
+                                                            onChange={e => setProductForm({ ...productForm, salePrice: Number(e.target.value) })}
+                                                            className="w-full px-3 py-2 bg-white border border-stone-200 rounded-md focus:outline-none focus:border-red-500 text-sm font-bold text-red-600"
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Product Status</label>
+                                                <select
+                                                    value={productForm.status || 'active'}
+                                                    onChange={e => setProductForm({ ...productForm, status: e.target.value })}
+                                                    className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 focus:bg-white transition-colors text-sm appearance-none font-bold"
+                                                >
+                                                    <option value="active">Active (Live)</option>
+                                                    <option value="draft">Draft (Hidden)</option>
+                                                    <option value="archived">Archived</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* RIGHT COLUMN: Media */}
+                                    <div>
+                                        <h4 className="text-[10px] font-bold tracking-widest uppercase text-stone-900 border-b border-stone-200 pb-2 mb-6">Media Gallery</h4>
+                                        <div
+                                            className="border-2 border-dashed border-stone-200 rounded-2xl p-10 text-center bg-stone-50 hover:bg-stone-100 hover:border-stone-300 transition-colors cursor-pointer flex flex-col items-center justify-center mb-6"
+                                            onClick={() => productFileInputRef.current.click()}
+                                        >
+                                            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
+                                                <FiUploadCloud size={24} className="text-stone-400" />
+                                            </div>
+                                            <p className="text-sm font-bold text-stone-900 mb-1">Click to Upload</p>
+                                            <p className="text-xs text-stone-500 mb-3">Or <kbd className="bg-white border border-stone-200 px-2 py-0.5 rounded-md font-mono text-[10px]">Ctrl+V</kbd> anywhere to paste.</p>
+                                            <input
+                                                type="file"
+                                                multiple
+                                                accept="image/*"
+                                                className="hidden"
+                                                ref={productFileInputRef}
+                                                onChange={(e) => handleImageUpload(e, false)}
+                                            />
+                                            <span className="bg-stone-900 text-white text-[10px] font-bold tracking-widest uppercase px-4 py-2 rounded-full">Select Files</span>
+                                        </div>
+                                        {productForm.images.length > 0 && (
+                                            <div>
+                                                <p className="text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-3">Selected Images ({productForm.images.length})</p>
+                                                <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
+                                                    {productForm.images.map((imgSrc, idx) => (
+                                                        <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-stone-200 group bg-stone-100">
+                                                            <img src={imgSrc} alt={`Preview ${idx}`} className="w-full h-full object-cover" />
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => { e.stopPropagation(); removeProductImage(idx); }}
+                                                                className="absolute top-2 right-2 w-6 h-6 bg-white/90 text-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500 hover:text-white shadow-sm"
+                                                            >
+                                                                <FiTrash2 size={12} />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="lg:col-span-2 pt-6 flex justify-end gap-4 border-t border-stone-100 mt-4">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsProductModalOpen(false)}
+                                            className="px-8 py-3.5 border border-stone-200 rounded-full text-stone-900 hover:bg-stone-50 text-xs font-bold tracking-widest uppercase transition-colors"
+                                        >
+                                            Discard
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            className="px-10 py-3.5 bg-stone-900 text-white rounded-full hover:bg-stone-800 text-xs font-bold tracking-widest uppercase shadow-xl shadow-stone-900/20 transition-colors flex items-center gap-2"
+                                        >
+                                            <FiCheck size={16} /> Save Product
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1982,127 +1986,129 @@ export default function AdminDashboard() {
 
             {/* UPGRADED CATEGORY MODAL WITH ITEM SELECTION */}
             {isCategoryModalOpen && (
-                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4 sm:p-6 animate-fade-in" onPaste={(e) => handlePaste(e, true)}>
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh] overflow-hidden border border-stone-100">
-                        <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50 flex-shrink-0">
-                            <h3 className="text-xl font-light text-stone-900">{selectedCategory ? 'Edit' : 'New'} <span className="font-serif italic font-bold">Collection</span></h3>
-                            <button
-                                onClick={() => setIsCategoryModalOpen(false)}
-                                className="w-8 h-8 rounded-full bg-white border border-stone-200 flex items-center justify-center text-stone-500 hover:text-stone-900 transition-colors"
-                            >
-                                <FiX size={16} />
-                            </button>
-                        </div>
-                        <div className="p-8 overflow-y-auto custom-scrollbar relative">
-                            <form onSubmit={handleCategorySubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="space-y-6">
-                                    <div>
-                                        <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Collection Name *</label>
-                                        <input
-                                            required
-                                            type="text"
-                                            value={categoryForm.name || ''}
-                                            onChange={e => setCategoryForm({ ...categoryForm, name: e.target.value })}
-                                            className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm font-bold text-stone-900"
-                                        />
+                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 overflow-y-auto custom-scrollbar animate-fade-in" onPaste={(e) => handlePaste(e, true)}>
+                    <div className="flex min-h-full items-start justify-center p-4 pt-16 pb-24">
+                        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-stone-100">
+                            <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
+                                <h3 className="text-xl font-light text-stone-900">{selectedCategory ? 'Edit' : 'New'} <span className="font-serif italic font-bold">Collection</span></h3>
+                                <button
+                                    onClick={() => setIsCategoryModalOpen(false)}
+                                    className="w-8 h-8 rounded-full bg-white border border-stone-200 flex items-center justify-center text-stone-500 hover:text-stone-900 transition-colors"
+                                >
+                                    <FiX size={16} />
+                                </button>
+                            </div>
+                            <div className="p-8">
+                                <form onSubmit={handleCategorySubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-6">
+                                        <div>
+                                            <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Collection Name *</label>
+                                            <input
+                                                required
+                                                type="text"
+                                                value={categoryForm.name || ''}
+                                                onChange={e => setCategoryForm({ ...categoryForm, name: e.target.value })}
+                                                className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm font-bold text-stone-900"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">URL Slug *</label>
+                                            <input
+                                                required
+                                                type="text"
+                                                value={categoryForm.slug || ''}
+                                                onChange={e => setCategoryForm({ ...categoryForm, slug: e.target.value.toLowerCase().replace(/\s+/g, '-') })}
+                                                className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm font-mono"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Description</label>
+                                            <textarea
+                                                rows="3"
+                                                value={categoryForm.description || ''}
+                                                onChange={e => setCategoryForm({ ...categoryForm, description: e.target.value })}
+                                                className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm resize-none"
+                                            ></textarea>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">URL Slug *</label>
-                                        <input
-                                            required
-                                            type="text"
-                                            value={categoryForm.slug || ''}
-                                            onChange={e => setCategoryForm({ ...categoryForm, slug: e.target.value.toLowerCase().replace(/\s+/g, '-') })}
-                                            className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm font-mono"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Description</label>
-                                        <textarea
-                                            rows="3"
-                                            value={categoryForm.description || ''}
-                                            onChange={e => setCategoryForm({ ...categoryForm, description: e.target.value })}
-                                            className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm resize-none"
-                                        ></textarea>
-                                    </div>
-                                </div>
-                                <div className="space-y-6">
-                                    <div>
-                                        <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Cover Image</label>
-                                        {categoryForm.image ? (
-                                            <div className="relative aspect-square rounded-2xl overflow-hidden border border-stone-200 group">
-                                                <img src={categoryForm.image} className="w-full h-full object-cover" alt="" />
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setCategoryForm({ ...categoryForm, image: '' })}
-                                                    className="absolute top-3 right-3 w-8 h-8 bg-white/90 text-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500 hover:text-white shadow-sm"
-                                                >
-                                                    <FiTrash2 size={14} />
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <div
-                                                className="border-2 border-dashed border-stone-200 rounded-2xl aspect-[3/2] bg-stone-50 hover:bg-stone-100 transition-colors cursor-pointer flex flex-col items-center justify-center text-center p-6"
-                                                onClick={() => categoryFileInputRef.current.click()}
-                                            >
-                                                <FiImage size={32} className="text-stone-300 mb-4" />
-                                                <p className="text-xs font-bold text-stone-900 mb-1">Click or Paste (Ctrl+V)</p>
-                                                <input
-                                                    type="file"
-                                                    accept="image/*"
-                                                    className="hidden"
-                                                    ref={categoryFileInputRef}
-                                                    onChange={(e) => handleImageUpload(e, true)}
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* ADD ITEMS VISUALLY TO COLLECTION */}
-                                <div className="md:col-span-2 pt-2">
-                                    <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-3">Add Products to Collection</label>
-                                    <div className="max-h-48 overflow-y-auto border border-stone-200 rounded-xl p-3 bg-stone-50 space-y-1">
-                                        {products.map(p => (
-                                            <label key={p.id} className="flex items-center gap-4 p-2 hover:bg-stone-100 rounded-lg cursor-pointer transition-colors border border-transparent hover:border-stone-200">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedCategoryProducts.includes(p.id)}
-                                                    onChange={(e) => {
-                                                        if (e.target.checked) setSelectedCategoryProducts([...selectedCategoryProducts, p.id]);
-                                                        else setSelectedCategoryProducts(selectedCategoryProducts.filter(id => id !== p.id));
-                                                    }}
-                                                    className="w-4 h-4 rounded border-stone-300 text-stone-900 focus:ring-stone-900 cursor-pointer"
-                                                />
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-10 bg-white border border-stone-200 rounded overflow-hidden flex-shrink-0">
-                                                        <img src={p.images?.[0] || p.image} alt="" className="w-full h-full object-cover" />
-                                                    </div>
-                                                    <span className="text-xs font-bold text-stone-900">{p.name}</span>
+                                    <div className="space-y-6">
+                                        <div>
+                                            <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Cover Image</label>
+                                            {categoryForm.image ? (
+                                                <div className="relative aspect-square rounded-2xl overflow-hidden border border-stone-200 group">
+                                                    <img src={categoryForm.image} className="w-full h-full object-cover" alt="" />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setCategoryForm({ ...categoryForm, image: '' })}
+                                                        className="absolute top-3 right-3 w-8 h-8 bg-white/90 text-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500 hover:text-white shadow-sm"
+                                                    >
+                                                        <FiTrash2 size={14} />
+                                                    </button>
                                                 </div>
-                                            </label>
-                                        ))}
-                                        {products.length === 0 && <p className="text-xs text-stone-400 p-2 text-center py-6">No products available in catalog yet.</p>}
+                                            ) : (
+                                                <div
+                                                    className="border-2 border-dashed border-stone-200 rounded-2xl aspect-[3/2] bg-stone-50 hover:bg-stone-100 transition-colors cursor-pointer flex flex-col items-center justify-center text-center p-6"
+                                                    onClick={() => categoryFileInputRef.current.click()}
+                                                >
+                                                    <FiImage size={32} className="text-stone-300 mb-4" />
+                                                    <p className="text-xs font-bold text-stone-900 mb-1">Click or Paste (Ctrl+V)</p>
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        className="hidden"
+                                                        ref={categoryFileInputRef}
+                                                        onChange={(e) => handleImageUpload(e, true)}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                    <p className="text-[10px] text-stone-500 mt-2 text-right">{selectedCategoryProducts.length} pieces selected</p>
-                                </div>
 
-                                <div className="md:col-span-2 pt-4 flex justify-end gap-3 border-t border-stone-100 mt-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsCategoryModalOpen(false)}
-                                        className="px-6 py-3 border border-stone-200 rounded-full text-stone-900 hover:bg-stone-50 text-xs font-bold tracking-widest uppercase transition-colors"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        className="px-8 py-3 bg-stone-900 text-white rounded-full hover:bg-stone-800 text-xs font-bold tracking-widest uppercase shadow-lg shadow-stone-900/10 transition-colors"
-                                    >
-                                        Save Collection
-                                    </button>
-                                </div>
-                            </form>
+                                    {/* ADD ITEMS VISUALLY TO COLLECTION */}
+                                    <div className="md:col-span-2 pt-2">
+                                        <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-3">Add Products to Collection</label>
+                                        <div className="max-h-48 overflow-y-auto border border-stone-200 rounded-xl p-3 bg-stone-50 space-y-1">
+                                            {products.map(p => (
+                                                <label key={p.id} className="flex items-center gap-4 p-2 hover:bg-stone-100 rounded-lg cursor-pointer transition-colors border border-transparent hover:border-stone-200">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedCategoryProducts.includes(p.id)}
+                                                        onChange={(e) => {
+                                                            if (e.target.checked) setSelectedCategoryProducts([...selectedCategoryProducts, p.id]);
+                                                            else setSelectedCategoryProducts(selectedCategoryProducts.filter(id => id !== p.id));
+                                                        }}
+                                                        className="w-4 h-4 rounded border-stone-300 text-stone-900 focus:ring-stone-900 cursor-pointer"
+                                                    />
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-10 bg-white border border-stone-200 rounded overflow-hidden flex-shrink-0">
+                                                            <img src={p.images?.[0] || p.image} alt="" className="w-full h-full object-cover" />
+                                                        </div>
+                                                        <span className="text-xs font-bold text-stone-900">{p.name}</span>
+                                                    </div>
+                                                </label>
+                                            ))}
+                                            {products.length === 0 && <p className="text-xs text-stone-400 p-2 text-center py-6">No products available in catalog yet.</p>}
+                                        </div>
+                                        <p className="text-[10px] text-stone-500 mt-2 text-right">{selectedCategoryProducts.length} pieces selected</p>
+                                    </div>
+
+                                    <div className="md:col-span-2 pt-4 flex justify-end gap-3 border-t border-stone-100 mt-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsCategoryModalOpen(false)}
+                                            className="px-6 py-3 border border-stone-200 rounded-full text-stone-900 hover:bg-stone-50 text-xs font-bold tracking-widest uppercase transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            className="px-8 py-3 bg-stone-900 text-white rounded-full hover:bg-stone-800 text-xs font-bold tracking-widest uppercase shadow-lg shadow-stone-900/10 transition-colors"
+                                        >
+                                            Save Collection
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2110,18 +2116,18 @@ export default function AdminDashboard() {
 
             {/* 🔥 UPDATED COUPON MODAL */}
             {isCouponModalOpen && (
-                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4 sm:p-6 animate-fade-in">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh] overflow-hidden border border-stone-100">
-                        <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50 flex-shrink-0">
-                            <h3 className="text-xl font-light text-stone-900">{selectedCoupon ? 'Edit' : 'New'} <span className="font-serif italic font-bold">Promo Code</span></h3>
-                            <button
-                                onClick={() => setIsCouponModalOpen(false)}
-                                className="w-8 h-8 rounded-full bg-white border border-stone-200 flex items-center justify-center text-stone-500 hover:text-stone-900 transition-colors"
-                            >
-                                <FiX size={16} />
-                            </button>
-                        </div>
-                        <div className="overflow-y-auto custom-scrollbar">
+                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 overflow-y-auto custom-scrollbar animate-fade-in">
+                    <div className="flex min-h-full items-start justify-center p-4 pt-16 pb-24">
+                        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-stone-100">
+                            <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
+                                <h3 className="text-xl font-light text-stone-900">{selectedCoupon ? 'Edit' : 'New'} <span className="font-serif italic font-bold">Promo Code</span></h3>
+                                <button
+                                    onClick={() => setIsCouponModalOpen(false)}
+                                    className="w-8 h-8 rounded-full bg-white border border-stone-200 flex items-center justify-center text-stone-500 hover:text-stone-900 transition-colors"
+                                >
+                                    <FiX size={16} />
+                                </button>
+                            </div>
                             <form onSubmit={handleCouponSubmit} className="p-8 space-y-6">
                                 <div>
                                     <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Promo Code *</label>
@@ -2205,51 +2211,50 @@ export default function AdminDashboard() {
 
             {/* Message View Modal */}
             {isMessageModalOpen && selectedMessage && (
-                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6 animate-fade-in">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh] overflow-hidden border border-stone-100">
-                        <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50 flex-shrink-0">
-                            <h3 className="text-xl font-light text-stone-900">Client <span className="font-serif italic font-bold">Inquiry</span></h3>
-                            <button
-                                onClick={() => setIsMessageModalOpen(false)}
-                                className="w-8 h-8 rounded-full bg-white border border-stone-200 flex items-center justify-center text-stone-500 hover:text-stone-900 transition-colors"
-                            >
-                                <FiX size={16} />
-                            </button>
-                        </div>
-                        <div className="p-8 overflow-y-auto custom-scrollbar">
-                            <div className="flex justify-between items-start mb-8 pb-6 border-b border-stone-100">
-                                <div>
-                                    <p className="text-sm font-bold text-stone-900">{selectedMessage.sender}</p>
-                                    <p className="text-sm text-stone-500">{selectedMessage.email}</p>
+                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 overflow-y-auto custom-scrollbar animate-fade-in">
+                    <div className="flex min-h-full items-start justify-center p-4 pt-16 pb-24">
+                        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-stone-100">
+                            <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
+                                <h3 className="text-xl font-light text-stone-900">Client <span className="font-serif italic font-bold">Inquiry</span></h3>
+                                <button
+                                    onClick={() => setIsMessageModalOpen(false)}
+                                    className="w-8 h-8 rounded-full bg-white border border-stone-200 flex items-center justify-center text-stone-500 hover:text-stone-900 transition-colors"
+                                >
+                                    <FiX size={16} />
+                                </button>
+                            </div>
+                            <div className="p-8">
+                                <div className="flex justify-between items-start mb-8 pb-6 border-b border-stone-100">
+                                    <div>
+                                        <p className="text-sm font-bold text-stone-900">{selectedMessage.sender}</p>
+                                        <p className="text-sm text-stone-500">{selectedMessage.email}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-xs text-stone-400 font-medium">
+                                            {safeDate(selectedMessage.created_at || selectedMessage.date)}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div className="text-right">
-                                    <p className="text-xs text-stone-400 font-medium">
-                                        {safeDate(selectedMessage.created_at || selectedMessage.date)}
+                                <div className="mb-6">
+                                    <h4 className="text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Subject</h4>
+                                    <p className="font-medium text-stone-900">{selectedMessage.subject}</p>
+                                </div>
+                                <div>
+                                    <h4 className="text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Message</h4>
+                                    <p className="text-sm text-stone-600 leading-relaxed whitespace-pre-wrap bg-stone-50 p-6 rounded-2xl border border-stone-100">
+                                        {selectedMessage.message}
                                     </p>
                                 </div>
-                            </div>
-                            <div className="mb-6">
-                                <h4 className="text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Subject</h4>
-                                <p className="font-medium text-stone-900">{selectedMessage.subject}</p>
-                            </div>
-                            <div>
-                                <h4 className="text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Message</h4>
-                                <p className="text-sm text-stone-600 leading-relaxed whitespace-pre-wrap bg-stone-50 p-6 rounded-2xl border border-stone-100">
-                                    {selectedMessage.message}
-                                </p>
-                            </div>
-                            <div className="pt-8 mt-8 flex justify-end gap-3 border-t border-stone-100">
-                                <a
-                                    href={`mailto:${selectedMessage.email}?subject=RE: ${selectedMessage.subject}`}
-                                    className="px-8 py-3 bg-stone-900 text-white rounded-full hover:bg-stone-800 text-xs font-bold tracking-widest uppercase shadow-lg shadow-stone-900/10 transition-colors"
-                                >
-                                    Reply via Email
-                                </a>
+                                <div className="pt-8 mt-8 flex justify-end gap-3 border-t border-stone-100">
+                                    <a
+                                        href={`mailto:${selectedMessage.email}?subject=RE: ${selectedMessage.subject}`}
+                                        className="px-8 py-3 bg-stone-900 text-white rounded-full hover:bg-stone-800 text-xs font-bold tracking-widest uppercase shadow-lg shadow-stone-900/10 transition-colors"
+                                    >
+                                        Reply via Email
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             )}
-        </div>
-    );
-}

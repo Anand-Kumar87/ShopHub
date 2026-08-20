@@ -1505,7 +1505,7 @@ export default function AdminDashboard() {
 
             {/* ORDER PREVIEW MODAL */}
             {isOrderModalOpen && selectedOrder && (
-                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 flex items-start justify-center p-4 pt-16 animate-fade-in">
+                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 flex items-start justify-center p-4 pt-16 animate-fade-in overflow-y-auto pb-24 custom-scrollbar">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[95vh]">
                         <div className="px-8 py-5 border-b border-stone-100 flex justify-between items-center bg-stone-50/50 sticky top-0 z-10">
                             <div>
@@ -1642,7 +1642,8 @@ export default function AdminDashboard() {
 
             {/* CUSTOMER PREVIEW MODAL */}
             {isCustomerModalOpen && selectedCustomer && (
-                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
+                // <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
+                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 flex items-start justify-center p-4 pt-16 animate-fade-in overflow-y-auto pb-24 custom-scrollbar">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-stone-100">
                         <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
                             <h3 className="text-xl font-light text-stone-900">Client <span className="font-serif italic font-bold">Profile</span></h3>
@@ -2201,7 +2202,7 @@ export default function AdminDashboard() {
 
             {/* Message View Modal */}
             {isMessageModalOpen && selectedMessage && (
-                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
+                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 flex items-start justify-center p-4 pt-16 animate-fade-in overflow-y-auto pb-24 custom-scrollbar">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-stone-100">
                         <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
                             <h3 className="text-xl font-light text-stone-900">Client <span className="font-serif italic font-bold">Inquiry</span></h3>

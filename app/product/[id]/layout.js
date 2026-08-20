@@ -86,7 +86,7 @@ export default async function ProductLayout({ children, params }) {
         },
     };
 
-    // अगर प्रोडक्ट पर रिव्यु (Reviews) हैं, तो स्टार रेटिंग (Star Rating) भी जोड़ें
+    //  अगर प्रोडक्ट पर रिव्यु (Reviews) हैं, तो स्टार रेटिंग (Star Rating) भी जोड़ें
     if (product.rating && product.reviews && product.reviews.length > 0) {
         jsonLd.aggregateRating = {
             '@type': 'AggregateRating',
@@ -97,7 +97,7 @@ export default async function ProductLayout({ children, params }) {
 
     return (
         <>
-            {/* यह स्क्रिप्ट यूज़र को नहीं दिखेगी, सिर्फ Google के बॉट्स इसे पढ़ेंगे */}
+            {/*  यह स्क्रिप्ट यूज़र को नहीं दिखेगी, सिर्फ Google के बॉट्स इसे पढ़ेंगे */}
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

@@ -1,29 +1,28 @@
+import { supabase } from '../../utils/supabase';
+
+// 🔥 Next.js को सख्त निर्देश: कुछ भी सेव (Cache) मत करो, हमेशा लाइव डेटा लाओ!
 export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 export const revalidate = 0;
 
 // 🔥 1. DYNAMIC PREMIUM SEO (Meta Tags)
 export async function generateMetadata({ params }) {
     const resolvedParams = await params;
-    const id = resolvedParams.id;
+    const id = resolvedParams?.id;
+
+    if (!id) return { title: 'ShopHub | Premium Collection' };
 
     try {
-        // 🚀 THE FIX: Native Fetch with 'no-store' to completely bust Vercel's Cache
-        const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/products?id=eq.${id}&select=name,description,images,image`, {
-            headers: {
-                'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
-            },
-            cache: 'no-store' // यह लाइन Vercel को पुराना डेटा सेव करने से रोकेगी!
-        });
+        // वापस से आपके भरोसेमंद Supabase Client का इस्तेमाल
+        const { data: product, error } = await supabase
+            .from('products')
+            .select('*')
+            .eq('id', id)
+            .single();
 
-        if (!res.ok) throw new Error('Fetch failed');
-        const data = await res.json();
-        const product = data?.[0]; // Supabase REST array रिटर्न करता है
-
-        if (!product) {
+        if (error || !product) {
             return {
-                title: 'Product Not Found | ShopHub.',
-                description: 'Discover premium curated fashion at ShopHub.',
+                title: 'ShopHub | Premium Collection',
             };
         }
 
@@ -35,77 +34,79 @@ export async function generateMetadata({ params }) {
             openGraph: {
                 title: `${product.name} | ShopHub.`,
                 description: product.description ? product.description.substring(0, 150) + '...' : 'Shop this premium piece now.',
-                images: [{ url: ogImage, width: 1200, height: 630, alt: product.name }],
+                images: [{ url: ogImage }],
                 type: 'website',
                 siteName: 'ShopHub',
             },
             twitter: {
                 card: 'summary_large_image',
                 title: product.name,
-                description: product.description ? product.description.substring(0, 100) + '...' : '',
                 images: [ogImage],
             },
         };
     } catch (error) {
-        return {
-            title: 'ShopHub. | Premium Collection',
-        };
+        return { title: 'ShopHub | Premium Collection' };
     }
 }
 
 // 🔥 2. JSON-LD RICH SNIPPETS (Google Search Magic)
 export default async function ProductLayout({ children, params }) {
     const resolvedParams = await params;
-    const id = resolvedParams.id;
+    const id = resolvedParams?.id;
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://shophubstyle.vercel.app';
 
-    try {
-        // 🚀 Same Cache-busting trick for Rich Snippets
-        const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/products?id=eq.${id}&select=*`, {
-            headers: {
-                'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
-            },
-            cache: 'no-store'
-        });
+    let jsonLd = null;
 
-        const data = await res.json();
-        const product = data?.[0];
+    if (id) {
+        try {
+            const { data: product } = await supabase
+                .from('products')
+                .select('*')
+                .eq('id', id)
+                .single();
 
-        if (!product) return <>{children}</>;
+            if (product) {
+                jsonLd = {
+                    '@context': 'https://schema.org',
+                    '@type': 'Product',
+                    name: product.name,
+                    image: product.images?.[0] || product.image,
+                    description: product.description || `Buy ${product.name} at ShopHub.`,
+                    sku: product.sku || product.id,
+                    offers: {
+                        '@type': 'Offer',
+                        url: `${baseUrl}/product/${product.id}`,
+                        priceCurrency: 'INR',
+                        price: product.salePrice || product.price,
+                        availability: product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+                        itemCondition: 'https://schema.org/NewCondition',
+                    }
+                };
 
-        const jsonLd = {
-            '@context': 'https://schema.org',
-            '@type': 'Product',
-            name: product.name,
-            image: product.images?.[0] || product.image,
-            description: product.description || `Buy ${product.name} at ShopHub.`,
-            sku: product.sku || product.id,
-            offers: {
-                '@type': 'Offer',
-                url: `${baseUrl}/product/${product.id}`,
-                priceCurrency: 'INR',
-                price: product.salePrice || product.price,
-                availability: product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-                itemCondition: 'https://schema.org/NewCondition',
-            },
-        };
-
-        if (product.rating && product.reviews && product.reviews.length > 0) {
-            jsonLd.aggregateRating = {
-                '@type': 'AggregateRating',
-                ratingValue: product.rating,
-                reviewCount: product.reviews.length,
-            };
+                // अगर रिव्यु हैं, तो स्टार रेटिंग दिखाओ
+                if (product.rating && product.reviews && product.reviews.length > 0) {
+                    jsonLd.aggregateRating = {
+                        '@type': 'AggregateRating',
+                        ratingValue: product.rating,
+                        reviewCount: product.reviews.length,
+                    };
+                }
+            }
+        } catch (error) {
+            console.error("SEO JSON-LD Error:", error);
         }
-
-        return (
-            <>
-                <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-                {children}
-            </>
-        );
-    } catch (error) {
-        return <>{children}</>;
     }
+
+    return (
+        <>
+            {/* JSON-LD स्क्रिप्ट सिर्फ तभी रेंडर होगी जब प्रोडक्ट मिलेगा */}
+            {jsonLd && (
+                <script
+                    type="application/ld+json"
+                    dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+                />
+            )}
+            {children}
+        </>
+    );
 }

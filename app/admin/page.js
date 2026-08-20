@@ -1501,13 +1501,13 @@ export default function AdminDashboard() {
                 </div>
             </main>
 
-  {/* --- MODALS --- */}
+{/* --- MODALS --- */}
 
             {/* ORDER PREVIEW MODAL */}
             {isOrderModalOpen && selectedOrder && (
-                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto custom-scrollbar">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[95vh] flex-shrink-0 mt-12 mb-24">
-                        <div className="px-8 py-5 border-b border-stone-100 flex justify-between items-center bg-stone-50/50 sticky top-0 z-10">
+                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6 animate-fade-in">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[90vh] overflow-hidden">
+                        <div className="px-8 py-5 border-b border-stone-100 flex justify-between items-center bg-stone-50/50 flex-shrink-0">
                             <div>
                                 <h3 className="text-xl font-light text-stone-900">
                                     Order <span className="font-serif italic font-bold">#{selectedOrder.orderNumber || selectedOrder.id?.toString().substring(0, 8).toUpperCase()}</span>
@@ -1523,7 +1523,7 @@ export default function AdminDashboard() {
                                 <FiX size={18} />
                             </button>
                         </div>
-                        <div className="overflow-y-auto p-8 hide-scrollbar grid grid-cols-1 lg:grid-cols-3 gap-10">
+                        <div className="overflow-y-auto p-8 custom-scrollbar grid grid-cols-1 lg:grid-cols-3 gap-10">
 
                             <div className="lg:col-span-2 space-y-8">
                                 <div>
@@ -1642,9 +1642,9 @@ export default function AdminDashboard() {
 
             {/* CUSTOMER PREVIEW MODAL */}
             {isCustomerModalOpen && selectedCustomer && (
-                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto custom-scrollbar">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-stone-100 flex-shrink-0 mt-12 mb-24">
-                        <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
+                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6 animate-fade-in">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh] overflow-hidden border border-stone-100">
+                        <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50 flex-shrink-0">
                             <h3 className="text-xl font-light text-stone-900">Client <span className="font-serif italic font-bold">Profile</span></h3>
                             <button
                                 onClick={() => setIsCustomerModalOpen(false)}
@@ -1653,7 +1653,7 @@ export default function AdminDashboard() {
                                 <FiX size={16} />
                             </button>
                         </div>
-                        <div className="p-8">
+                        <div className="p-8 overflow-y-auto custom-scrollbar">
                             <div className="flex items-center gap-5 mb-8">
                                 <div className="w-16 h-16 bg-stone-900 text-white rounded-full flex items-center justify-center font-serif italic font-bold text-2xl">
                                     {selectedCustomer.name.charAt(0)}
@@ -1693,9 +1693,9 @@ export default function AdminDashboard() {
 
             {/* ADD OR EDIT CLIENT MODAL */}
             {isNewCustomerModalOpen && (
-                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-start justify-center p-4 overflow-y-auto custom-scrollbar">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-stone-100 flex-shrink-0 mt-12 mb-24">
-                        <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
+                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4 sm:p-6 animate-fade-in">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh] overflow-hidden border border-stone-100">
+                        <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50 flex-shrink-0">
                             <h3 className="text-xl font-light text-stone-900">{customerForm.id ? 'Edit' : 'Add'} <span className="font-serif italic font-bold">Client</span></h3>
                             <button
                                 onClick={() => setIsNewCustomerModalOpen(false)}
@@ -1704,66 +1704,68 @@ export default function AdminDashboard() {
                                 <FiX size={16} />
                             </button>
                         </div>
-                        <form onSubmit={handleNewCustomerSubmit} className="p-8 space-y-6">
-                            <div>
-                                <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Full Name *</label>
-                                <input
-                                    required type="text" value={customerForm.name}
-                                    onChange={e => setCustomerForm({ ...customerForm, name: e.target.value })}
-                                    className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm font-bold text-stone-900"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Email Address *</label>
-                                <input
-                                    required type="email" value={customerForm.email}
-                                    onChange={e => setCustomerForm({ ...customerForm, email: e.target.value })}
-                                    className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm"
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-6">
+                        <div className="overflow-y-auto custom-scrollbar">
+                            <form onSubmit={handleNewCustomerSubmit} className="p-8 space-y-6">
                                 <div>
-                                    <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Role</label>
-                                    <select
-                                        value={customerForm.role}
-                                        onChange={e => setCustomerForm({ ...customerForm, role: e.target.value })}
-                                        className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm"
-                                    >
-                                        <option value="customer">Customer</option>
-                                        <option value="admin">Admin</option>
-                                    </select>
+                                    <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Full Name *</label>
+                                    <input
+                                        required type="text" value={customerForm.name}
+                                        onChange={e => setCustomerForm({ ...customerForm, name: e.target.value })}
+                                        className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm font-bold text-stone-900"
+                                    />
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Orders Made</label>
+                                    <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Email Address *</label>
                                     <input
-                                        type="number" value={customerForm.orders}
-                                        onChange={e => setCustomerForm({ ...customerForm, orders: Number(e.target.value) })}
+                                        required type="email" value={customerForm.email}
+                                        onChange={e => setCustomerForm({ ...customerForm, email: e.target.value })}
                                         className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm"
                                     />
                                 </div>
-                            </div>
-                            <div>
-                                <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Total Spent (INR)</label>
-                                <input
-                                    type="number" value={customerForm.spent}
-                                    onChange={e => setCustomerForm({ ...customerForm, spent: Number(e.target.value) })}
-                                    className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm font-bold text-stone-900"
-                                />
-                            </div>
-                            <div className="pt-4 flex justify-end gap-3 border-t border-stone-100 mt-6">
-                                <button type="button" onClick={() => setIsNewCustomerModalOpen(false)} className="px-6 py-3 border border-stone-200 rounded-full text-stone-900 hover:bg-stone-50 text-xs font-bold tracking-widest uppercase transition-colors">Cancel</button>
-                                <button type="submit" className="px-8 py-3 bg-stone-900 text-white rounded-full hover:bg-stone-800 text-xs font-bold tracking-widest uppercase shadow-lg shadow-stone-900/10 transition-colors">Save Client</button>
-                            </div>
-                        </form>
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Role</label>
+                                        <select
+                                            value={customerForm.role}
+                                            onChange={e => setCustomerForm({ ...customerForm, role: e.target.value })}
+                                            className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm"
+                                        >
+                                            <option value="customer">Customer</option>
+                                            <option value="admin">Admin</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Orders Made</label>
+                                        <input
+                                            type="number" value={customerForm.orders}
+                                            onChange={e => setCustomerForm({ ...customerForm, orders: Number(e.target.value) })}
+                                            className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Total Spent (INR)</label>
+                                    <input
+                                        type="number" value={customerForm.spent}
+                                        onChange={e => setCustomerForm({ ...customerForm, spent: Number(e.target.value) })}
+                                        className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm font-bold text-stone-900"
+                                    />
+                                </div>
+                                <div className="pt-4 flex justify-end gap-3 border-t border-stone-100 mt-6">
+                                    <button type="button" onClick={() => setIsNewCustomerModalOpen(false)} className="px-6 py-3 border border-stone-200 rounded-full text-stone-900 hover:bg-stone-50 text-xs font-bold tracking-widest uppercase transition-colors">Cancel</button>
+                                    <button type="submit" className="px-8 py-3 bg-stone-900 text-white rounded-full hover:bg-stone-800 text-xs font-bold tracking-widest uppercase shadow-lg shadow-stone-900/10 transition-colors">Save Client</button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
             )}
 
             {/* PRODUCT CRUD MODAL */}
             {isProductModalOpen && (
-                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto custom-scrollbar" onPaste={(e) => handlePaste(e, false)}>
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[95vh] flex-shrink-0 mt-12 mb-24">
-                        <div className="px-8 py-5 border-b border-stone-100 flex justify-between items-center bg-stone-50/50 sticky top-0 z-10">
+                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6 animate-fade-in" onPaste={(e) => handlePaste(e, false)}>
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl flex flex-col max-h-[90vh] overflow-hidden">
+                        <div className="px-8 py-5 border-b border-stone-100 flex justify-between items-center bg-stone-50/50 flex-shrink-0">
                             <div>
                                 <h3 className="text-xl font-light text-stone-900">{selectedProduct ? 'Edit' : 'Curate'} <span className="font-serif italic font-bold">Piece</span></h3>
                                 <p className="text-[10px] font-bold tracking-widest uppercase text-stone-400 mt-1">Full Management Interface</p>
@@ -1775,7 +1777,7 @@ export default function AdminDashboard() {
                                 <FiX size={18} />
                             </button>
                         </div>
-                        <div className="overflow-y-auto p-8 hide-scrollbar">
+                        <div className="overflow-y-auto p-8 custom-scrollbar relative">
                             <form onSubmit={handleProductSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                                 {/* LEFT COLUMN */}
                                 <div className="space-y-6">
@@ -1980,9 +1982,9 @@ export default function AdminDashboard() {
 
             {/* UPGRADED CATEGORY MODAL WITH ITEM SELECTION */}
             {isCategoryModalOpen && (
-                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-start justify-center p-4 overflow-y-auto custom-scrollbar" onPaste={(e) => handlePaste(e, true)}>
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-stone-100 flex flex-col max-h-[90vh] flex-shrink-0 mt-12 mb-24">
-                        <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
+                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4 sm:p-6 animate-fade-in" onPaste={(e) => handlePaste(e, true)}>
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh] overflow-hidden border border-stone-100">
+                        <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50 flex-shrink-0">
                             <h3 className="text-xl font-light text-stone-900">{selectedCategory ? 'Edit' : 'New'} <span className="font-serif italic font-bold">Collection</span></h3>
                             <button
                                 onClick={() => setIsCategoryModalOpen(false)}
@@ -1991,7 +1993,7 @@ export default function AdminDashboard() {
                                 <FiX size={16} />
                             </button>
                         </div>
-                        <div className="p-8 overflow-y-auto hide-scrollbar">
+                        <div className="p-8 overflow-y-auto custom-scrollbar relative">
                             <form onSubmit={handleCategorySubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div className="space-y-6">
                                     <div>
@@ -2108,9 +2110,9 @@ export default function AdminDashboard() {
 
             {/* 🔥 UPDATED COUPON MODAL */}
             {isCouponModalOpen && (
-                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-start justify-center p-4 overflow-y-auto custom-scrollbar">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-stone-100 flex-shrink-0 mt-12 mb-24">
-                        <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
+                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4 sm:p-6 animate-fade-in">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh] overflow-hidden border border-stone-100">
+                        <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50 flex-shrink-0">
                             <h3 className="text-xl font-light text-stone-900">{selectedCoupon ? 'Edit' : 'New'} <span className="font-serif italic font-bold">Promo Code</span></h3>
                             <button
                                 onClick={() => setIsCouponModalOpen(false)}
@@ -2119,91 +2121,93 @@ export default function AdminDashboard() {
                                 <FiX size={16} />
                             </button>
                         </div>
-                        <form onSubmit={handleCouponSubmit} className="p-8 space-y-6">
-                            <div>
-                                <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Promo Code *</label>
-                                <input
-                                    required
-                                    type="text"
-                                    value={couponForm.code}
-                                    onChange={e => setCouponForm({ ...couponForm, code: e.target.value.toUpperCase().replace(/\s+/g, '') })}
-                                    className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm font-bold text-stone-900 tracking-widest uppercase"
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-6">
+                        <div className="overflow-y-auto custom-scrollbar">
+                            <form onSubmit={handleCouponSubmit} className="p-8 space-y-6">
                                 <div>
-                                    <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Discount Type *</label>
-                                    <select
-                                        value={couponForm.type}
-                                        onChange={e => setCouponForm({ ...couponForm, type: e.target.value })}
-                                        className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm appearance-none"
-                                    >
-                                        <option value="percent">Percentage (%)</option>
-                                        <option value="fixed">Fixed Amount (INR)</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Value *</label>
+                                    <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Promo Code *</label>
                                     <input
                                         required
-                                        type="number"
-                                        min="1"
-                                        value={couponForm.discount}
-                                        onChange={e => setCouponForm({ ...couponForm, discount: Number(e.target.value) })}
-                                        className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm font-bold"
+                                        type="text"
+                                        value={couponForm.code}
+                                        onChange={e => setCouponForm({ ...couponForm, code: e.target.value.toUpperCase().replace(/\s+/g, '') })}
+                                        className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm font-bold text-stone-900 tracking-widest uppercase"
                                     />
                                 </div>
-                            </div>
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Discount Type *</label>
+                                        <select
+                                            value={couponForm.type}
+                                            onChange={e => setCouponForm({ ...couponForm, type: e.target.value })}
+                                            className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm appearance-none"
+                                        >
+                                            <option value="percent">Percentage (%)</option>
+                                            <option value="fixed">Fixed Amount (INR)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Value *</label>
+                                        <input
+                                            required
+                                            type="number"
+                                            min="1"
+                                            value={couponForm.discount}
+                                            onChange={e => setCouponForm({ ...couponForm, discount: Number(e.target.value) })}
+                                            className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm font-bold"
+                                        />
+                                    </div>
+                                </div>
 
-                            {/* 🔥 NEW: Expiry & Target Role Fields */}
-                            <div className="grid grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Expiration Date (Optional)</label>
-                                    <input
-                                        type="date"
-                                        value={couponForm.expires_at || ''}
-                                        onChange={e => setCouponForm({ ...couponForm, expires_at: e.target.value })}
-                                        className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm"
-                                    />
+                                {/* 🔥 NEW: Expiry & Target Role Fields */}
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Expiration Date (Optional)</label>
+                                        <input
+                                            type="date"
+                                            value={couponForm.expires_at || ''}
+                                            onChange={e => setCouponForm({ ...couponForm, expires_at: e.target.value })}
+                                            className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Who can use this?</label>
+                                        <select
+                                            value={couponForm.target_role || 'all'}
+                                            onChange={e => setCouponForm({ ...couponForm, target_role: e.target.value })}
+                                            className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm appearance-none"
+                                        >
+                                            <option value="all">Everyone</option>
+                                            <option value="student">Verified Students Only (.edu)</option>
+                                        </select>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Who can use this?</label>
-                                    <select
-                                        value={couponForm.target_role || 'all'}
-                                        onChange={e => setCouponForm({ ...couponForm, target_role: e.target.value })}
-                                        className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 transition-colors text-sm appearance-none"
+
+                                <div className="pt-4 flex justify-end gap-3 border-t border-stone-100 mt-6">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsCouponModalOpen(false)}
+                                        className="px-6 py-3 border border-stone-200 rounded-full text-stone-900 hover:bg-stone-50 text-xs font-bold tracking-widest uppercase transition-colors"
                                     >
-                                        <option value="all">Everyone</option>
-                                        <option value="student">Verified Students Only (.edu)</option>
-                                    </select>
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-8 py-3 bg-stone-900 text-white rounded-full hover:bg-stone-800 text-xs font-bold tracking-widest uppercase shadow-lg shadow-stone-900/10 transition-colors"
+                                    >
+                                        Save Code
+                                    </button>
                                 </div>
-                            </div>
-
-                            <div className="pt-4 flex justify-end gap-3 border-t border-stone-100 mt-6">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsCouponModalOpen(false)}
-                                    className="px-6 py-3 border border-stone-200 rounded-full text-stone-900 hover:bg-stone-50 text-xs font-bold tracking-widest uppercase transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-8 py-3 bg-stone-900 text-white rounded-full hover:bg-stone-800 text-xs font-bold tracking-widest uppercase shadow-lg shadow-stone-900/10 transition-colors"
-                                >
-                                    Save Code
-                                </button>
-                            </div>
-                        </form>
+                            </form>
+                        </div>
                     </div>
                 </div>
             )}
 
             {/* Message View Modal */}
             {isMessageModalOpen && selectedMessage && (
-                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto custom-scrollbar">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-stone-100 flex-shrink-0 mt-12 mb-24">
-                        <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
+                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6 animate-fade-in">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh] overflow-hidden border border-stone-100">
+                        <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50 flex-shrink-0">
                             <h3 className="text-xl font-light text-stone-900">Client <span className="font-serif italic font-bold">Inquiry</span></h3>
                             <button
                                 onClick={() => setIsMessageModalOpen(false)}
@@ -2212,7 +2216,7 @@ export default function AdminDashboard() {
                                 <FiX size={16} />
                             </button>
                         </div>
-                        <div className="p-8">
+                        <div className="p-8 overflow-y-auto custom-scrollbar">
                             <div className="flex justify-between items-start mb-8 pb-6 border-b border-stone-100">
                                 <div>
                                     <p className="text-sm font-bold text-stone-900">{selectedMessage.sender}</p>

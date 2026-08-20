@@ -1,6 +1,3 @@
-import { supabase } from '../../utils/supabase';
-
-// 🔥 सबसे बड़ा फिक्स: Next.js को हमेशा LIVE डेटा लाने का आदेश दें (No Caching)
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
@@ -10,13 +7,20 @@ export async function generateMetadata({ params }) {
     const id = resolvedParams.id;
 
     try {
-        const { data: product, error } = await supabase
-            .from('products')
-            .select('name, description, images, image')
-            .eq('id', id)
-            .single();
+        // 🚀 THE FIX: Native Fetch with 'no-store' to completely bust Vercel's Cache
+        const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/products?id=eq.${id}&select=name,description,images,image`, {
+            headers: {
+                'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
+            },
+            cache: 'no-store' // यह लाइन Vercel को पुराना डेटा सेव करने से रोकेगी!
+        });
 
-        if (error || !product) {
+        if (!res.ok) throw new Error('Fetch failed');
+        const data = await res.json();
+        const product = data?.[0]; // Supabase REST array रिटर्न करता है
+
+        if (!product) {
             return {
                 title: 'Product Not Found | ShopHub.',
                 description: 'Discover premium curated fashion at ShopHub.',
@@ -31,14 +35,7 @@ export async function generateMetadata({ params }) {
             openGraph: {
                 title: `${product.name} | ShopHub.`,
                 description: product.description ? product.description.substring(0, 150) + '...' : 'Shop this premium piece now.',
-                images: [
-                    {
-                        url: ogImage,
-                        width: 1200,
-                        height: 630,
-                        alt: product.name,
-                    },
-                ],
+                images: [{ url: ogImage, width: 1200, height: 630, alt: product.name }],
                 type: 'website',
                 siteName: 'ShopHub',
             },
@@ -60,51 +57,55 @@ export async function generateMetadata({ params }) {
 export default async function ProductLayout({ children, params }) {
     const resolvedParams = await params;
     const id = resolvedParams.id;
-    
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://shophubstyle.vercel.app';
 
-    const { data: product } = await supabase
-        .from('products')
-        .select('*')
-        .eq('id', id)
-        .single();
+    try {
+        // 🚀 Same Cache-busting trick for Rich Snippets
+        const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/products?id=eq.${id}&select=*`, {
+            headers: {
+                'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
+            },
+            cache: 'no-store'
+        });
 
-    if (!product) {
+        const data = await res.json();
+        const product = data?.[0];
+
+        if (!product) return <>{children}</>;
+
+        const jsonLd = {
+            '@context': 'https://schema.org',
+            '@type': 'Product',
+            name: product.name,
+            image: product.images?.[0] || product.image,
+            description: product.description || `Buy ${product.name} at ShopHub.`,
+            sku: product.sku || product.id,
+            offers: {
+                '@type': 'Offer',
+                url: `${baseUrl}/product/${product.id}`,
+                priceCurrency: 'INR',
+                price: product.salePrice || product.price,
+                availability: product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+                itemCondition: 'https://schema.org/NewCondition',
+            },
+        };
+
+        if (product.rating && product.reviews && product.reviews.length > 0) {
+            jsonLd.aggregateRating = {
+                '@type': 'AggregateRating',
+                ratingValue: product.rating,
+                reviewCount: product.reviews.length,
+            };
+        }
+
+        return (
+            <>
+                <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+                {children}
+            </>
+        );
+    } catch (error) {
         return <>{children}</>;
     }
-
-    const jsonLd = {
-        '@context': 'https://schema.org',
-        '@type': 'Product',
-        name: product.name,
-        image: product.images?.[0] || product.image,
-        description: product.description || `Buy ${product.name} at ShopHub.`,
-        sku: product.sku || product.id,
-        offers: {
-            '@type': 'Offer',
-            url: `${baseUrl}/product/${product.id}`,
-            priceCurrency: 'INR',
-            price: product.salePrice || product.price,
-            availability: product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-            itemCondition: 'https://schema.org/NewCondition',
-        },
-    };
-
-    if (product.rating && product.reviews && product.reviews.length > 0) {
-        jsonLd.aggregateRating = {
-            '@type': 'AggregateRating',
-            ratingValue: product.rating,
-            reviewCount: product.reviews.length,
-        };
-    }
-
-    return (
-        <>
-            <script
-                type="application/ld+json"
-                dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-            />
-            {children}
-        </>
-    );
 }

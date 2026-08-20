@@ -771,7 +771,8 @@ export default function AccountPage() {
 
             {/* --- MODALS --- */}
             {selectedOrder && (
-                <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-start justify-center p-4 pt-16 sm:p-6 animate-fade-in print-wrapper">
+                // <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-start justify-center p-4 pt-16 sm:p-6 animate-fade-in print-wrapper">
+                <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 flex items-start justify-center p-4 pt-16 animate-fade-in overflow-y-auto pb-24 custom-scrollbar">
                     {/* 🔥 FIX: 'print-container' properly scales to fit A4 size and hides background */}
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col border border-stone-100 print-container">
 

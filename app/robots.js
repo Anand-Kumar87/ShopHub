@@ -1,5 +1,5 @@
 export default function robots() {
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://shop-hub-umber.vercel.app'; // अपनी साइट का डोमेन डालें
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://shophubstyle.vercel.app/'; // अपनी साइट का डोमेन डालें
 
     return {
         rules: {

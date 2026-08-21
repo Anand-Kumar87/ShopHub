@@ -87,7 +87,7 @@ export default function Footer() {
           {/* Brand Info */}
           <div className="sm:col-span-2 md:col-span-1">
             <Link href="/" className="text-2xl font-extrabold text-white tracking-tight block mb-6">
-              ShopHub<span className="text-stone-500">.</span>
+              ShopHubStyle<span className="text-stone-500">.</span>
             </Link>
             <p className="text-sm text-stone-400 mb-8 leading-relaxed max-w-xs">
               Trendy pieces. Timeless style. Your one-stop destination for quality products that make you look and feel your best.

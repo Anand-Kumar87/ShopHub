@@ -1,6 +1,7 @@
 export default function Loading() {
     return (
-        <div className="fixed inset-0 bg-white z-[200] flex flex-col items-center justify-center animate-fade-in">
+        // 🔥 'fixed inset-0' हटाकर 'min-h-[70vh] w-full' लगा दिया ताकि Footer अपनी जगह (नीचे) रहे
+        <div className="min-h-[70vh] w-full bg-white flex flex-col items-center justify-center animate-fade-in">
             <div className="flex flex-col items-center justify-center">
                 {/* Premium Spinner */}
                 <div className="w-12 h-12 border-2 border-stone-100 border-t-stone-900 rounded-full animate-spin mb-8 shadow-sm"></div>

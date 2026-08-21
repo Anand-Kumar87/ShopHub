@@ -109,7 +109,7 @@ export default function Header() {
 
             {/* Premium Minimalist Logo */}
             <Link href="/" className="text-3xl font-extrabold text-stone-900 tracking-tighter flex items-baseline relative z-10">
-              ShopHub<span className="text-stone-400 text-4xl leading-none">.Style</span>
+              ShopHubStyle<span className="text-stone-400 text-4xl leading-none">.</span>
             </Link>
 
             {/* Desktop Navigation (Premium Typography) */}

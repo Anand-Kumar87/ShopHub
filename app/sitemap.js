@@ -2,7 +2,7 @@ import { supabase } from './utils/supabase'; // अपने supabase फाइ�
 
 export default async function sitemap() {
     // अपनी वेबसाइट का असली डोमेन यहाँ डालें (जैसे https://shop-hub-umber.vercel.app)
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://shop-hub-umber.vercel.app';
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://shophubstyle.vercel.app';
 
     // 1. डेटाबेस से सिर्फ 'Active' प्रोडक्ट्स मंगवाएं
     const { data: products } = await supabase

@@ -787,7 +787,7 @@ export default function ProductDetails() {
                             {sizeGuideTab === 'fit' && (
                                 <div className="animate-fade-in text-center pt-2">
                                     <div className="w-full bg-white rounded-xl overflow-hidden mb-4">
-                                        <img src="/image_0b454a.png" alt="Fit Guide" className="w-full h-auto object-contain mix-blend-multiply" />
+                                        <img src="/fitsize.png" alt="Fit Guide" className="w-full h-auto object-contain mix-blend-multiply" />
                                     </div>
                                     <p className="text-sm text-stone-500 italic mt-4">For the best comfort, we recommend matching the fit style to your personal preference.</p>
                                 </div>
@@ -796,7 +796,7 @@ export default function ProductDetails() {
                             {sizeGuideTab === 'measure' && (
                                 <div className="animate-fade-in pt-2 pb-8">
                                     <div className="w-full bg-white rounded-xl overflow-hidden mb-6 flex justify-center">
-                                        <img src="/image_0b45c6.png" alt="How to Measure" className="w-full sm:w-[80%] h-auto object-contain mix-blend-multiply" />
+                                        <img src="/sizeguide.png" alt="How to Measure" className="w-full sm:w-[80%] h-auto object-contain mix-blend-multiply" />
                                     </div>
                                     <div className="bg-stone-50 p-5 rounded-xl border border-stone-200">
                                         <p className="text-xs sm:text-sm font-bold text-stone-900 mb-2">Need help measuring?</p>

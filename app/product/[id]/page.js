@@ -26,7 +26,8 @@ export default function ProductDetails() {
     const router = useRouter();
     const productId = params?.id;
 
-    const { addToCart } = useCart();
+    // 🔥 FIX: Added `isCartOpen` to safely hide the sticky bar when cart is open
+    const { addToCart, isCartOpen } = useCart() || {};
     const { convertPrice, freeShippingThreshold } = useGlobalCurrency() || { convertPrice: (v) => `₹${Number(v).toFixed(2)}`, freeShippingThreshold: 0 };
     const { wishlistItems, addToWishlist, removeFromWishlist, isInWishlist } = useWishlist() || { isInWishlist: () => false };
 
@@ -46,7 +47,7 @@ export default function ProductDetails() {
     const [reviewRating, setReviewRating] = useState(0);
     const [reviewText, setReviewText] = useState('');
 
-    // 🔥 NEW: Image Upload for Reviews
+    // Image Upload for Reviews
     const [reviewImages, setReviewImages] = useState([]);
 
     // Size Guide States
@@ -66,7 +67,7 @@ export default function ProductDetails() {
 
     // FETCH REAL DATA FROM SUPABASE
     useEffect(() => {
-        // 🔥 NEW FIX: Page open होते ही सबसे ऊपर (Top) स्क्रॉल कर देगा
+        // 🔥 FIX: Page load hote hi Auto-Scroll to Top
         window.scrollTo({ top: 0, behavior: 'instant' });
 
         const fetchProduct = async () => {
@@ -100,7 +101,6 @@ export default function ProductDetails() {
                 if (formattedProduct.sizes.length > 0) setSelectedSize(formattedProduct.sizes[0]);
 
                 let fetchedRelated = [];
-
                 let { data: sameCatData } = await supabase
                     .from('products')
                     .select('*')
@@ -215,7 +215,7 @@ export default function ProductDetails() {
         }
     };
 
-    // 🔥 NEW: Image Upload Handler for Reviews
+    // Image Upload Handler for Reviews
     const handleImageUpload = (e) => {
         const files = Array.from(e.target.files);
         if (reviewImages.length + files.length > 3) {
@@ -246,7 +246,7 @@ export default function ProductDetails() {
             user: reviewerName,
             rating: reviewRating,
             text: reviewText,
-            images: reviewImages, // Save uploaded images
+            images: reviewImages,
             date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
         };
 
@@ -259,7 +259,7 @@ export default function ProductDetails() {
         setProduct(updatedProduct);
         setReviewRating(0);
         setReviewText('');
-        setReviewImages([]); // Clear images after submit
+        setReviewImages([]);
 
         try {
             const { error } = await supabase.from('products').update({ reviews: updatedReviews, rating: newAverageRating }).eq('id', product.id);
@@ -270,7 +270,6 @@ export default function ProductDetails() {
 
     const isClothingCategory = product ? ['clothing', 'apparel', 't-shirt', 'shirt', 'dress', 'jeans', 'bottoms', 'tops', 'outerwear', 'hoodie'].some(cat => product.category?.toLowerCase().includes(cat)) : false;
 
-    // 🔥 DUMMY REVIEWS for Marquee Animation if product has no reviews
     const displayReviewsForMarquee = product?.reviews?.length > 0 ? product.reviews : [
         { user: "Nikhil A.", text: "Product quality is really good and premium.", rating: 5 },
         { user: "Anjali V.", text: "Quality is really good and feels very positive.", rating: 5 },
@@ -296,7 +295,6 @@ export default function ProductDetails() {
 
     return (
         <>
-            {/* 🔥 CSS FOR INFINITE SCROLLING MARQUEE */}
             <style dangerouslySetInnerHTML={{
                 __html: `
                 @keyframes marquee {
@@ -421,7 +419,6 @@ export default function ProductDetails() {
                                                         key={color}
                                                         onClick={() => {
                                                             setSelectedColor(color);
-                                                            // 🔥 COLOR SYNC FIX: Change Image based on color index
                                                             if (product.images[idx]) {
                                                                 setActiveImageIdx(idx);
                                                                 if (imageScrollRef.current) {
@@ -568,7 +565,7 @@ export default function ProductDetails() {
                             {activeTab === 'reviews' && (
                                 <div className="flex-1 flex flex-col animate-fade-in h-full w-full overflow-hidden">
 
-                                    {/* 🔥 ANIMATED REVIEWS MARQUEE */}
+                                    {/* ANIMATED REVIEWS MARQUEE */}
                                     <div className="mb-10 bg-[#fbf9f4] py-8 rounded-3xl relative overflow-hidden shadow-inner border border-stone-200/50">
                                         <div className="text-center mb-6 px-4">
                                             <h3 className="text-xl sm:text-2xl font-bold text-stone-900 mb-1">Our customers love us</h3>
@@ -609,7 +606,7 @@ export default function ProductDetails() {
                                                 </div>
                                                 <p className="text-sm text-stone-600 leading-relaxed mt-3">{rev.text}</p>
 
-                                                {/* 🔥 REVIEW IMAGES DISPLAY */}
+                                                {/* REVIEW IMAGES DISPLAY */}
                                                 {rev.images && rev.images.length > 0 && (
                                                     <div className="flex gap-3 mt-4 overflow-x-auto hide-scrollbar pb-2">
                                                         {rev.images.map((img, imgIdx) => (
@@ -641,7 +638,7 @@ export default function ProductDetails() {
                                             </div>
                                             <textarea value={reviewText} onChange={(e) => setReviewText(e.target.value)} placeholder="What did you like or dislike?" rows="3" className="w-full bg-white border border-stone-200 rounded-xl p-4 text-sm focus:outline-none focus:border-stone-900 mb-4 resize-none shadow-sm"></textarea>
 
-                                            {/* 🔥 IMAGE UPLOAD BUTTON */}
+                                            {/* IMAGE UPLOAD BUTTON */}
                                             <div className="mb-5">
                                                 <label className="flex items-center gap-2 text-xs font-bold tracking-widest uppercase text-stone-500 mb-3 cursor-pointer w-max hover:text-stone-900 transition-colors">
                                                     <FiCamera size={18} /> Upload Photos
@@ -689,8 +686,8 @@ export default function ProductDetails() {
                 </div>
             </main>
 
-            {/* PORTAL FOR MOBILE STICKY BOTTOM ACTION BAR (BLACK BUTTON) */}
-            {isMounted && createPortal(
+            {/* PORTAL FOR MOBILE STICKY BOTTOM ACTION BAR (BLACK BUTTON) & Hide when Cart Opens */}
+            {isMounted && !isCartOpen && createPortal(
                 <div
                     className="md:hidden"
                     style={{
@@ -701,7 +698,7 @@ export default function ProductDetails() {
                         padding: '10px 16px',
                         boxShadow: '0 -2px 10px rgba(0, 0, 0, 0.05)',
                         background: '#fff',
-                        zIndex: 999999,
+                        zIndex: 40, // 🔥 Z-Index lowered to 40 so cart drawer can slide over it safely
                         transform: 'translateZ(0)',
                         WebkitTransform: 'translateZ(0)',
                         backfaceVisibility: 'hidden',

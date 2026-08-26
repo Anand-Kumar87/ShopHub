@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation'; // 🔥 useRouter added
+import { useSearchParams, useRouter } from 'next/navigation'; 
 import Image from 'next/image';
 import Link from 'next/link';
-import useSWR from 'swr'; // 🔥 SWR Imported for Light-Speed Caching
+import useSWR from 'swr'; 
 import {
     FiHeart, FiShoppingBag, FiTruck, FiRefreshCcw,
     FiShield, FiMapPin, FiArrowRight, FiX, FiStar,
@@ -53,38 +53,32 @@ const fetchShopProducts = async () => {
 };
 
 function ShopContent() {
-    const router = useRouter(); // 🔥 Router initialized for product page redirect
+    const router = useRouter(); 
     const searchParams = useSearchParams();
     const urlSearchQuery = searchParams.get('search') || '';
     const urlCategoryQuery = searchParams.get('category') || 'all';
 
     const { addToCart } = useCart();
+    const { convertPrice } = useGlobalCurrency() || { convertPrice: (v) => `₹${Number(v).toFixed(2)}` };
 
-    // Currency Context
-    const { convertPrice } = useGlobalCurrency() || { convertPrice: (v) => `$${Number(v).toFixed(2)}` };
-
-    // 🔥 SWR Hooks (Manages Caching and Loading automatically)
     const { data: swrCategories, isLoading: isLoadingCats } = useSWR('shop_all_categories', fetchShopCategories, {
         revalidateOnFocus: false,
-        dedupingInterval: 120000 // Cache for 2 minutes
+        dedupingInterval: 120000 
     });
 
     const { data: swrProducts, isLoading: isLoadingProds } = useSWR('shop_all_products', fetchShopProducts, {
         revalidateOnFocus: false,
-        dedupingInterval: 120000 // Cache for 2 minutes
+        dedupingInterval: 120000 
     });
 
-    // Data States
     const [allProducts, setAllProducts] = useState([]);
     const allCategories = swrCategories || [{ name: 'All Products', slug: 'all' }];
     const loading = isLoadingCats || isLoadingProds;
 
-    // Sync SWR cache to local state for Optimistic Updates (like reviews)
     useEffect(() => {
         if (swrProducts) setAllProducts(swrProducts);
     }, [swrProducts]);
 
-    // Filtering & View States
     const [category, setCategory] = useState(urlCategoryQuery);
     const [minPrice, setMinPrice] = useState(0);
     const [maxPrice, setMaxPrice] = useState(100000);
@@ -95,31 +89,23 @@ function ShopContent() {
     const [viewMode, setViewMode] = useState('grid');
     const itemsPerPage = viewMode === 'grid' ? 6 : 4;
 
-    // Wishlist State to track liked products
     const { wishlistItems, addToWishlist, removeFromWishlist } = useWishlist() || { wishlistItems: [], addToWishlist: () => { }, removeFromWishlist: () => { } };
 
-    // Modal (Quick View) States
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [modalQuantity, setModalQuantity] = useState(1);
     const [activeImageIdx, setActiveImageIdx] = useState(0);
     const [selectedColor, setSelectedColor] = useState('');
     const [selectedSize, setSelectedSize] = useState('');
     const [activeTab, setActiveTab] = useState('details');
-
-    // Review Form States
     const [reviewRating, setReviewRating] = useState(0);
     const [reviewText, setReviewText] = useState('');
-
-    // Size Guide Modal State
     const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
 
-    // Sync URL queries
     useEffect(() => {
         if (urlSearchQuery) setSearchQuery(urlSearchQuery);
         if (urlCategoryQuery) setCategory(urlCategoryQuery.toLowerCase());
     }, [urlSearchQuery, urlCategoryQuery]);
 
-    // Reset modal states when a new product is selected
     useEffect(() => {
         if (selectedProduct) {
             setActiveImageIdx(0);
@@ -131,24 +117,24 @@ function ShopContent() {
         }
     }, [selectedProduct]);
 
-    // Derive filtered products
+    // 🔥 FIX: Improved Filtering Logic to handle string prices from database
     let filteredProducts = allProducts.filter(product => {
         const matchesCategory = category === 'all' || product.category?.toLowerCase() === category;
-        const matchesPrice = product.price >= minPrice && product.price <= maxPrice;
+        const price = Number(product.price) || 0;
+        const matchesPrice = price >= minPrice && price <= maxPrice;
         const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             (product.description || '').toLowerCase().includes(searchQuery.toLowerCase());
         return matchesCategory && matchesPrice && matchesSearch;
     });
 
-    if (sortBy === 'price-low') filteredProducts.sort((a, b) => a.price - b.price);
-    if (sortBy === 'price-high') filteredProducts.sort((a, b) => b.price - a.price);
+    if (sortBy === 'price-low') filteredProducts.sort((a, b) => Number(a.price) - Number(b.price));
+    if (sortBy === 'price-high') filteredProducts.sort((a, b) => Number(b.price) - Number(a.price));
     if (sortBy === 'rating') filteredProducts.sort((a, b) => b.rating - a.rating);
     if (sortBy === 'newest') filteredProducts.sort((a, b) => new Date(b.created_at || b.date || 0) - new Date(a.created_at || a.date || 0));
 
     const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
     const paginatedProducts = filteredProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-    // Handlers
     const handleAddToCart = (product) => {
         addToCart(product, modalQuantity);
         toast.success(
@@ -174,14 +160,12 @@ function ShopContent() {
         }
     };
 
-    // 🔥 REAL-TIME SUPABASE REVIEW SYSTEM
     const submitReview = async (e) => {
         e.preventDefault();
 
         if (reviewRating === 0) return toast.error("Please select a star rating first.");
         if (reviewText.trim().length < 5) return toast.error("Review must be at least 5 characters.");
 
-        // 1. Get current logged-in user's name
         let reviewerName = 'Verified Buyer';
         try {
             const localUser = JSON.parse(localStorage.getItem('currentUser'));
@@ -192,7 +176,6 @@ function ShopContent() {
             console.warn("Could not fetch user name");
         }
 
-        // 2. Create New Review Object
         const newReview = {
             user: reviewerName,
             rating: reviewRating,
@@ -202,8 +185,6 @@ function ShopContent() {
 
         const existingReviews = selectedProduct.reviews || [];
         const updatedReviews = [newReview, ...existingReviews];
-
-        // 3. Calculate New Average Rating dynamically
         const totalRating = updatedReviews.reduce((sum, rev) => sum + rev.rating, 0);
         const newAverageRating = parseFloat((totalRating / updatedReviews.length).toFixed(1));
 
@@ -213,14 +194,12 @@ function ShopContent() {
             rating: newAverageRating
         };
 
-        // 4. Update UI instantly (Optimistic Update for speed)
         setSelectedProduct(updatedProduct);
         setAllProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
 
         setReviewRating(0);
         setReviewText('');
 
-        // 5. Save to Real Database (Supabase)
         try {
             const { error } = await supabase
                 .from('products')
@@ -244,8 +223,6 @@ function ShopContent() {
 
     return (
         <main className="animate-fade-in bg-white min-h-screen pb-20">
-
-            {/* Premium Shop Banner */}
             <div className="bg-stone-50 pt-20 pb-16 border-b border-stone-200">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center text-center">
                     <span className="text-xs font-bold tracking-widest uppercase text-stone-400 mb-4">ShopHub Essentials</span>
@@ -259,8 +236,6 @@ function ShopContent() {
             </div>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-
-                {/* Mobile Filter Toggle */}
                 <div className="lg:hidden flex justify-between items-center mb-6">
                     <button onClick={() => setIsMobileFilterOpen(!isMobileFilterOpen)} className="flex items-center gap-2 text-stone-900 font-medium px-5 py-2 border border-stone-200 rounded-full text-sm">
                         <FiFilter /> Filters
@@ -272,15 +247,11 @@ function ShopContent() {
                 </div>
 
                 <div className="lg:flex lg:gap-12">
-
-                    {/* Sidebar Filters */}
                     <div className={`lg:w-1/4 ${isMobileFilterOpen ? 'block' : 'hidden'} lg:block mb-8 lg:mb-0`}>
                         <div className="sticky top-32 space-y-12 pr-6">
-
                             <div>
                                 <h3 className="text-xs font-bold tracking-widest uppercase text-stone-900 mb-6">Categories</h3>
                                 <ul className="space-y-4 text-sm font-medium">
-                                    {/* SKELETON FOR CATEGORIES */}
                                     {loading ? (
                                         [1, 2, 3, 4, 5].map(n => (
                                             <li key={n} className="h-5 bg-stone-100 rounded-md animate-pulse w-3/4"></li>
@@ -316,10 +287,7 @@ function ShopContent() {
                         </div>
                     </div>
 
-                    {/* Products Section */}
                     <div className="lg:w-3/4">
-
-                        {/* Top Control Bar */}
                         <div className="hidden lg:flex items-center justify-between mb-10 pb-4 border-b border-stone-100">
                             <h2 className="text-2xl font-light text-stone-900">
                                 {loading ? 'Loading...' : (searchQuery ? `Results for "${searchQuery}"` : (category !== 'all' ? <span className="capitalize">{allCategories.find(c => c.slug === category)?.name || category}</span> : 'All Products'))}
@@ -339,7 +307,6 @@ function ShopContent() {
                                     </select>
                                 </div>
 
-                                {/* View Mode Toggle */}
                                 <div className="flex items-center gap-1 border-l border-stone-200 pl-6">
                                     <button onClick={() => setViewMode('grid')} className={`p-1.5 rounded transition-colors ${viewMode === 'grid' ? 'text-stone-900 bg-stone-100' : 'text-stone-400 hover:text-stone-600'}`}><FiGrid size={18} /></button>
                                     <button onClick={() => setViewMode('list')} className={`p-1.5 rounded transition-colors ${viewMode === 'list' ? 'text-stone-900 bg-stone-100' : 'text-stone-400 hover:text-stone-600'}`}><FiList size={18} /></button>
@@ -347,9 +314,7 @@ function ShopContent() {
                             </div>
                         </div>
 
-                        {/* Products Container */}
                         {loading ? (
-                            // SKELETON FOR PRODUCTS
                             <div className={viewMode === 'grid' ? "grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-12 sm:gap-x-8" : "flex flex-col gap-8"}>
                                 {[1, 2, 3, 4, 5, 6].map((n) => (
                                     <div key={n} className={`flex ${viewMode === 'list' ? 'flex-row gap-8 items-center border-b border-stone-100 pb-8' : 'flex-col relative'} animate-pulse`}>
@@ -369,29 +334,27 @@ function ShopContent() {
                                 ))}
                             </div>
                         ) : allProducts.length === 0 ? (
-                            // DB is completely empty State
+                            // 🔥 FIX: CUSTOMER FRIENDLY EMPTY STATE
                             <div className="flex flex-col items-center justify-center py-32 text-center bg-stone-50 rounded-2xl border border-stone-100">
-                                <h3 className="text-xl font-bold text-stone-900 mb-2">Your Catalog is Empty</h3>
-                                <p className="text-stone-500 max-w-sm mb-6 text-sm">Head over to your Admin Portal to start adding beautiful pieces to your collection.</p>
-                                <Link href="/admin" className="bg-stone-900 text-white px-8 py-3 rounded-full text-xs font-bold tracking-widest uppercase hover:bg-stone-800 transition-colors">
-                                    Go to Admin Portal
+                                <h3 className="text-2xl font-bold text-stone-900 mb-2">We're Updating Our Collection!</h3>
+                                <p className="text-stone-500 max-w-sm mb-6 text-sm">Awesome new pieces are dropping soon. Please check back later.</p>
+                                <Link href="/" className="bg-stone-900 text-white px-8 py-3 rounded-full text-xs font-bold tracking-widest uppercase hover:bg-stone-800 transition-colors">
+                                    Back to Home
                                 </Link>
                             </div>
                         ) : paginatedProducts.length > 0 ? (
                             <div className={viewMode === 'grid' ? "grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-12 sm:gap-x-8" : "flex flex-col gap-8"}>
                                 {paginatedProducts.map(product => {
                                     const isWishlisted = wishlistItems.some(item => item.id === product.id);
-                                    const isOutOfStock = product.stock <= 0 || product.quantity <= 0; // 🔥 OUT OF STOCK CHECK
+                                    const isOutOfStock = product.stock <= 0 || product.quantity <= 0; 
 
                                     return (
                                         <div
                                             key={product.id}
                                             className={`group cursor-pointer flex ${viewMode === 'list' ? 'flex-row gap-8 items-center border-b border-stone-100 pb-8' : 'flex-col relative'}`}
-                                            onClick={() => router.push(`/product/${product.id}`)} /* 🔥 FIX: Redirects to Product Page */
+                                            onClick={() => router.push(`/product/${product.id}`)} 
                                         >
-                                            {/* Image Container with Hover Flip Effect */}
                                             <div className={`relative bg-stone-100 rounded-xl overflow-hidden ${viewMode === 'list' ? 'w-1/3 aspect-square' : 'aspect-[3/4] mb-5'}`}>
-                                                {/* Image 1 */}
                                                 <Image
                                                     src={product.images[0]?.startsWith('data:') ? product.images[0] : `${product.images[0]}?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80`}
                                                     alt={product.name}
@@ -399,7 +362,6 @@ function ShopContent() {
                                                     sizes="(max-width: 768px) 100vw, 33vw"
                                                     className={`object-cover transition-opacity duration-700 opacity-100 group-hover:opacity-0 ${isOutOfStock ? 'grayscale opacity-70' : ''}`}
                                                 />
-                                                {/* Image 2 (Shows on hover) */}
                                                 {product.images[1] && (
                                                     <Image
                                                         src={product.images[1]?.startsWith('data:') ? product.images[1] : `${product.images[1]}?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80`}
@@ -410,14 +372,12 @@ function ShopContent() {
                                                     />
                                                 )}
 
-                                                {/* 🔥 OUT OF STOCK BADGE */}
                                                 {isOutOfStock && (
                                                     <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white/95 text-stone-900 text-[10px] font-bold tracking-widest uppercase px-4 py-2 rounded-full shadow-lg z-20 whitespace-nowrap">
                                                         Sold Out
                                                     </span>
                                                 )}
 
-                                                {/* Premium Badges */}
                                                 <div className="absolute top-3 left-3 flex flex-col gap-2">
                                                     {product.oldPrice && product.onSale !== false && <span className="bg-red-600 text-white text-[9px] font-bold tracking-widest uppercase px-3 py-1.5 rounded-full shadow-md">Sale</span>}
                                                     {product.tags && product.tags.map(tag => (
@@ -425,7 +385,6 @@ function ShopContent() {
                                                     ))}
                                                 </div>
 
-                                                {/* Wishlist Button */}
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); handleWishlist(e, product); }}
                                                     className={`absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-sm rounded-full transition-all ${isWishlisted ? 'text-red-500 opacity-100' : 'text-stone-400 hover:text-red-500'} ${viewMode === 'grid' && !isWishlisted ? 'opacity-0 group-hover:opacity-100' : ''}`}
@@ -433,7 +392,6 @@ function ShopContent() {
                                                     <FiHeart size={16} className={isWishlisted ? 'fill-current' : ''} />
                                                 </button>
 
-                                                {/* 🔥 Premium Quick View (Eye) Icon for Shop Page */}
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); setSelectedProduct(product); setModalQuantity(1); }}
                                                     className={`absolute top-12 right-3 p-2 bg-white/90 backdrop-blur-sm rounded-full text-stone-400 hover:text-stone-900 hover:bg-white transition-all duration-300 z-10 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0`}
@@ -442,7 +400,6 @@ function ShopContent() {
                                                 </button>
                                             </div>
 
-                                            {/* Product Info */}
                                             <div className={viewMode === 'list' ? 'w-2/3 pr-4' : ''}>
                                                 <h3 className={`font-bold transition-colors mb-1 ${viewMode === 'list' ? 'text-2xl mb-3' : 'text-sm truncate'} ${isOutOfStock ? 'text-stone-400' : 'text-stone-900 group-hover:text-stone-500'}`}>{product.name}</h3>
 
@@ -457,7 +414,6 @@ function ShopContent() {
                                                     )}
                                                 </div>
 
-                                                {/* Color Swatches */}
                                                 {product.colors && product.colors.length > 0 && !isOutOfStock && (
                                                     <div className="flex gap-1.5 mb-2">
                                                         {product.colors.map((color, i) => (
@@ -470,7 +426,6 @@ function ShopContent() {
                                                     <p className="text-stone-500 text-sm mt-4 mb-6 max-w-lg leading-relaxed">{product.description}</p>
                                                 )}
 
-                                                {/* List View Quick Add */}
                                                 {viewMode === 'list' && (
                                                     <MagneticButton>
                                                         {isOutOfStock ? (
@@ -490,7 +445,6 @@ function ShopContent() {
                                 })}
                             </div>
                         ) : (
-                            // Filter Returns Empty State
                             <div className="flex flex-col items-center justify-center py-32 text-center bg-stone-50 rounded-2xl border border-stone-100">
                                 <FiFilter className="w-12 h-12 text-stone-300 mb-4" />
                                 <h3 className="text-xl font-bold text-stone-900 mb-2">No products found</h3>
@@ -501,7 +455,6 @@ function ShopContent() {
                             </div>
                         )}
 
-                        {/* Pagination */}
                         {!loading && totalPages > 1 && (
                             <div className="flex justify-center items-center gap-2 mt-16 pt-8 border-t border-stone-100">
                                 <button onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} disabled={currentPage === 1} className="px-4 py-2 text-sm font-medium text-stone-500 hover:text-stone-900 disabled:opacity-30 transition-colors">Prev</button>
@@ -517,7 +470,6 @@ function ShopContent() {
                 </div>
             </div>
 
-            {/* Ultra-Premium Glassmorphism Quick View Modal */}
             {selectedProduct && (
                 <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4 md:p-6 animate-fade-in">
                     <div className="bg-white rounded-3xl shadow-2xl overflow-hidden w-full max-w-6xl relative flex flex-col md:flex-row max-h-[90vh]">
@@ -526,7 +478,6 @@ function ShopContent() {
                             <FiX size={20} />
                         </button>
 
-                        {/* Left: Image Gallery */}
                         <div className="w-full md:w-1/2 p-6 md:p-8 bg-stone-50 flex flex-col">
                             <div className="relative aspect-[4/5] bg-white rounded-2xl overflow-hidden mb-4 border border-stone-100 shadow-sm">
                                 <Image
@@ -552,10 +503,8 @@ function ShopContent() {
                             </div>
                         </div>
 
-                        {/* Right: Content & Tabs */}
                         <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col overflow-y-auto hide-scrollbar">
 
-                            {/* Tabs Navigation */}
                             <div className="flex gap-8 border-b border-stone-200 mb-8">
                                 <button onClick={() => setActiveTab('details')} className={`pb-3 text-sm font-bold tracking-widest uppercase transition-colors relative ${activeTab === 'details' ? 'text-stone-900' : 'text-stone-400 hover:text-stone-600'}`}>
                                     Details
@@ -567,7 +516,6 @@ function ShopContent() {
                                 </button>
                             </div>
 
-                            {/* DETAILS TAB */}
                             {activeTab === 'details' && (
                                 <div className="flex-1 animate-fade-in">
                                     <h2 className="text-3xl font-light text-stone-900 mb-3">{selectedProduct.name}</h2>
@@ -591,7 +539,6 @@ function ShopContent() {
 
                                     <p className="text-stone-500 leading-relaxed text-sm mb-8">{selectedProduct.description}</p>
 
-                                    {/* Color Selection */}
                                     {selectedProduct.colors && selectedProduct.colors.length > 0 && (
                                         <div className="mb-6">
                                             <div className="flex justify-between items-center mb-3">
@@ -607,7 +554,6 @@ function ShopContent() {
                                         </div>
                                     )}
 
-                                    {/* Size Selection */}
                                     {selectedProduct.sizes && selectedProduct.sizes.length > 0 && (
                                         <div className="mb-8">
                                             <div className="flex justify-between items-center mb-3">
@@ -629,7 +575,6 @@ function ShopContent() {
                                         </div>
                                     )}
 
-                                    {/* Actions */}
                                     <div className="flex gap-4 pt-4 mt-auto border-t border-stone-100">
                                         <div className="flex items-center w-32 border border-stone-200 rounded-full bg-stone-50">
                                             <button onClick={() => setModalQuantity(prev => Math.max(1, prev - 1))} className="p-3 text-stone-500 hover:text-stone-900"><FiMinus size={14} /></button>
@@ -652,7 +597,6 @@ function ShopContent() {
                                 </div>
                             )}
 
-                            {/* REVIEWS TAB */}
                             {activeTab === 'reviews' && (
                                 <div className="flex-1 flex flex-col animate-fade-in h-full">
                                     <div className="flex-1 overflow-y-auto pr-2 space-y-6 mb-6">
@@ -677,7 +621,6 @@ function ShopContent() {
                                         )}
                                     </div>
 
-                                    {/* Write Review Form */}
                                     <div className="bg-stone-50 p-5 rounded-2xl border border-stone-100 mt-auto">
                                         <h4 className="text-sm font-bold text-stone-900 mb-3">Write a Review</h4>
                                         <form onSubmit={submitReview}>
@@ -706,12 +649,9 @@ function ShopContent() {
                 </div>
             )}
 
-            {/* 🔥 LUXURY SIZE GUIDE MODAL */}
             {isSizeGuideOpen && (
                 <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-fade-in">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-stone-100">
-
-                        {/* Header */}
                         <div className="px-8 py-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
                             <div>
                                 <h3 className="text-xl font-light text-stone-900">Measurement <span className="font-serif italic font-bold">Guide</span></h3>
@@ -725,7 +665,6 @@ function ShopContent() {
                             </button>
                         </div>
 
-                        {/* Body - Size Chart */}
                         <div className="p-8">
                             <p className="text-sm text-stone-600 mb-6">
                                 Measurements are provided as a guide. Please note that exact dimensions may vary slightly depending on the specific style and cut of the garment.
@@ -799,6 +738,7 @@ function ShopContent() {
         </main>
     );
 }
+
 export default function ShopPage() {
     return (
         <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-stone-50 text-stone-400 font-medium tracking-widest uppercase text-sm">Loading Collection...</div>}>

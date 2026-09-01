@@ -5,6 +5,10 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { FiX, FiUser, FiHeart, FiBox, FiLogOut } from 'react-icons/fi';
 
+// 🔥 NEW IMPORTS FOR PROPER SIGNOUT
+import { supabase } from '../../utils/supabase';
+import toast from 'react-hot-toast';
+
 // Components & Contexts
 import CurrencySelector from '../CurrencySelector';
 import { useWishlist } from '../../context/WishlistContext';
@@ -22,13 +26,33 @@ export default function MobileMenu({ onClose }) {
     }
   }, []);
 
-  // Handle Sign Out from Mobile
-  const handleSignOut = () => {
-    localStorage.removeItem('currentUser');
-    setCurrentUser(null);
-    window.dispatchEvent(new Event('userStateChange'));
-    onClose();
-    router.push('/');
+  // 🔥 SECURE SIGN OUT HANDLER (FIXED GHOST SESSION FOR MOBILE)
+  const handleSignOut = async () => {
+    try {
+      // 1. Kill session in Supabase backend
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+
+      // 2. Completely wipe local and session storage
+      localStorage.clear();
+      sessionStorage.clear();
+
+      // 3. Reset Local State
+      setCurrentUser(null);
+      window.dispatchEvent(new Event('userStateChange'));
+
+      // 4. Notify user and close menu
+      toast.success("Signed out securely.");
+      onClose();
+
+      // 5. Hard redirect and refresh to clear cached pages
+      router.push('/');
+      router.refresh();
+
+    } catch (error) {
+      console.error("Sign out error:", error);
+      toast.error("Failed to sign out properly.");
+    }
   };
 
   return (
@@ -113,6 +137,7 @@ export default function MobileMenu({ onClose }) {
                   )}
                 </Link>
 
+                {/* 🔥 Updated Button with new handleSignOut */}
                 <button onClick={handleSignOut} className="flex items-center gap-3 text-sm font-bold text-red-500 mt-3 pt-4 border-t border-stone-50">
                   <FiLogOut size={18} /> Sign Out
                 </button>

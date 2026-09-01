@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { supabase } from '../utils/supabase'; // 🔥 Real Database Connection Added
+import { supabase } from '../utils/supabase'; // 🔥 Real Database Connection
 import {
     FiLock, FiCheck, FiShoppingBag, FiArrowLeft,
     FiCreditCard, FiX, FiGift, FiSmartphone,
@@ -17,7 +17,6 @@ export default function CheckoutPage() {
     const router = useRouter();
     const [mounted, setMounted] = useState(false);
 
-    // 🔥 FIX: Added auth checking state to prevent blinking/flashing
     const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
     // Global Cart Context
@@ -43,8 +42,7 @@ export default function CheckoutPage() {
     // Form States
     const [formData, setFormData] = useState({
         firstName: '', lastName: '', email: '', phone: '',
-        address: '', city: '', postalCode: '', state: '', country: 'IN', // Default to India
-        // Payment Specific Data
+        address: '', city: '', postalCode: '', state: '', country: 'IN',
         cardNumber: '', expiryDate: '', cvv: '', cardName: '',
         upiId: '',
         bankName: '', accountNumber: '', ifscCode: ''
@@ -65,7 +63,6 @@ export default function CheckoutPage() {
     const [isProcessingPayment, setIsProcessingPayment] = useState(false);
     const [paymentError, setPaymentError] = useState('');
 
-    // Hydration, Auth Guard & Database Fetching
     useEffect(() => {
         setMounted(true);
 
@@ -139,7 +136,6 @@ export default function CheckoutPage() {
         }
     }, [formData.country, adminSettings]);
 
-    // 🔥 AUTO-SCROLL & BACKGROUND SCROLL LOCK FOR SUCCESS MODAL
     useEffect(() => {
         if (isSuccessModalOpen) {
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -160,7 +156,6 @@ export default function CheckoutPage() {
         });
     };
 
-    // 🔥 FIX: ADVANCED COUPON LOGIC (Expiry, Single-Use, Student Verification)
     const handleApplyCoupon = async () => {
         if (!couponCode.trim()) return;
         const codeToApply = couponCode.trim().toUpperCase();
@@ -183,7 +178,7 @@ export default function CheckoutPage() {
                     { code: 'FESTIVAL20', discount: 20, type: 'percent' },
                     { code: 'FLAT50', discount: 50, type: 'fixed' },
                     { code: 'WELCOME10', discount: 10, type: 'percent' },
-                    { code: 'STUDENT10', discount: 10, type: 'percent' } 
+                    { code: 'STUDENT10', discount: 10, type: 'percent' }
                 ];
                 validCoupon = adminCoupons.find(c => c.code.toUpperCase() === codeToApply);
             }
@@ -285,16 +280,25 @@ export default function CheckoutPage() {
 
         setIsProcessingPayment(true);
 
-        const existingOrders = JSON.parse(localStorage.getItem('shophub_orders')) || [];
+        // 🔥 FIX: Generate Order Number from Real Database, NOT LocalStorage
         let nextIdNum = 1;
-        if (existingOrders.length > 0) {
-            const maxId = existingOrders.reduce((max, order) => {
-                const match = String(order.orderNumber || order.id || '').match(/\d+$/);
+        try {
+            const { data: latestOrders, error } = await supabase
+                .from('orders')
+                .select('orderNumber')
+                .order('created_at', { ascending: false })
+                .limit(1);
+
+            if (latestOrders && latestOrders.length > 0 && latestOrders[0].orderNumber) {
+                const match = String(latestOrders[0].orderNumber).match(/\d+$/);
                 const num = match ? parseInt(match[0], 10) : 0;
-                return num > max ? num : max;
-            }, 0);
-            nextIdNum = maxId + 1;
+                nextIdNum = num + 1;
+            }
+        } catch (dbErr) {
+            console.warn("Could not fetch latest order ID from database, using fallback.");
+            nextIdNum = Math.floor(10000 + Math.random() * 90000);
         }
+
         const generatedOrderNumber = `ORD-${String(nextIdNum).padStart(5, '0')}`;
 
         const paymentDetails = {
@@ -316,8 +320,7 @@ export default function CheckoutPage() {
             customerName: `${formData.firstName} ${formData.lastName}`.trim(),
             email: formData.email,
             items: cartItems,
-            
-            // 🔥 FIX: Added root-level fields for Account Page compatibility while maintaining shipping_address
+
             shippingAddress: formData.address,
             city: formData.city,
             state: formData.state,
@@ -330,11 +333,11 @@ export default function CheckoutPage() {
                 email: formData.email,
                 phone: formData.phone,
                 address: formData.address,
-                street: formData.address, // For Account Page fallback
+                street: formData.address,
                 city: formData.city,
                 state: formData.state,
                 postalCode: formData.postalCode,
-                zipCode: formData.postalCode, // For Account Page fallback
+                zipCode: formData.postalCode,
                 country: formData.country,
             },
             shipping_cost: SHIPPING_COST,
@@ -433,14 +436,12 @@ export default function CheckoutPage() {
         }
     };
 
-    // 🔥 MAIN DATABASE SAVE FUNCTION WITH EMAIL (100% FIXED)
     const executeOrderSave = async (orderPayload) => {
         setFinalOrder(orderPayload);
 
         try {
             const { data: { session } } = await supabase.auth.getSession();
 
-            // 🔥 FIX 1: Cleaned up dbPayload (Removed stray city, state, country causing 400 error)
             const dbPayload = {
                 orderNumber: orderPayload.orderNumber,
                 customerName: orderPayload.customerName,
@@ -467,7 +468,7 @@ export default function CheckoutPage() {
             } else {
                 toast.success("Order placed successfully! 🎉", { icon: '✨' });
                 setShowCelebration(true);
-                setTimeout(() => setShowCelebration(false), 5000); 
+                setTimeout(() => setShowCelebration(false), 5000);
 
                 for (const item of orderPayload.items) {
                     const { data: productData } = await supabase.from('products').select('stock').eq('id', item.id).single();
@@ -494,7 +495,6 @@ export default function CheckoutPage() {
             console.error("Database connection error", dbError);
         }
 
-        // 🔥 FIX 2: Prevent QuotaExceededError (Stripped out heavy base64 strings and kept only last 10 orders locally)
         try {
             const litePayload = { ...orderPayload };
             if (litePayload.items) {
@@ -927,23 +927,43 @@ export default function CheckoutPage() {
                                         </label>
                                         {paymentMethod === 'bank' && (
                                             <div className="mt-4 ml-7 animate-fade-in space-y-4">
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <div>
-                                                        <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Your Bank Name</label>
-                                                        <input required type="text" name="bankName" value={formData.bankName} onChange={handleInputChange} className="w-full px-4 py-3 bg-white border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900 text-sm" />
+                                                {/* 🔥 यहाँ कस्टमर को एडमिन पैनल वाली असली डिटेल्स दिखेंगी */}
+                                                <div className="text-xs text-stone-600 bg-white p-4 rounded-xl border border-stone-200 space-y-2 shadow-sm">
+                                                    <p className="font-bold text-stone-900 mb-2 border-b border-stone-100 pb-1.5 uppercase tracking-wider text-[10px]">
+                                                        Please transfer funds to the official account below:
+                                                    </p>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-stone-400">Bank Name:</span>
+                                                        <span className="font-bold text-stone-900">{adminSettings.bankName || 'Not Set'}</span>
                                                     </div>
-                                                    <div>
-                                                        <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Account Number</label>
-                                                        <input required type="text" name="accountNumber" value={formData.accountNumber} onChange={handleInputChange} className="w-full px-4 py-3 bg-white border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900 text-sm" />
+                                                    <div className="flex justify-between">
+                                                        <span className="text-stone-400">Account Name:</span>
+                                                        <span className="font-bold text-stone-900">{adminSettings.bankAccountName || 'Not Set'}</span>
                                                     </div>
-                                                    <div className="md:col-span-2">
-                                                        <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">IFSC / Routing Code</label>
-                                                        <input required type="text" name="ifscCode" value={formData.ifscCode} onChange={handleInputChange} className="w-full px-4 py-3 bg-white border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900 text-sm uppercase" />
+                                                    <div className="flex justify-between">
+                                                        <span className="text-stone-400">Account Number:</span>
+                                                        <span className="font-mono font-bold text-stone-900">{adminSettings.bankAccountNumber || 'Not Set'}</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-stone-400">IFSC / SWIFT:</span>
+                                                        <span className="font-mono font-bold text-stone-900 uppercase">{adminSettings.bankIfscCode || 'Not Set'}</span>
                                                     </div>
                                                 </div>
-                                                <div className="text-xs text-stone-500 bg-stone-100 p-3 rounded-lg border border-stone-200">
-                                                    <p className="font-bold text-stone-900 mb-1">Transfer to:</p>
-                                                    ShopHub Inc. | Acc: 00987654321 | Routing: CHASEXXX
+
+                                                {/* यूज़र से उसके बैंक का कन्फर्मेशन लेने के लिए फॉर्म फील्ड्स */}
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                                                    <div>
+                                                        <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Your Bank Name</label>
+                                                        <input required type="text" name="bankName" value={formData.bankName} onChange={handleInputChange} placeholder="e.g. SBI" className="w-full px-4 py-3 bg-white border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900 text-sm" />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Your Account Number</label>
+                                                        <input required type="text" name="accountNumber" value={formData.accountNumber} onChange={handleInputChange} placeholder="Account No." className="w-full px-4 py-3 bg-white border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900 text-sm" />
+                                                    </div>
+                                                    <div className="md:col-span-2">
+                                                        <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Your IFSC Code</label>
+                                                        <input required type="text" name="ifscCode" value={formData.ifscCode} onChange={handleInputChange} placeholder="IFSC Code" className="w-full px-4 py-3 bg-white border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900 text-sm uppercase" />
+                                                    </div>
                                                 </div>
                                             </div>
                                         )}

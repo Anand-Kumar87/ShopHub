@@ -4,7 +4,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 import { FiSearch, FiUser, FiShoppingCart, FiHeart, FiMenu, FiX, FiBox, FiLogOut, FiArrowRight } from 'react-icons/fi';
-import { motion, AnimatePresence } from 'framer-motion'; // 🔥 IMPORTED FRAMER MOTION
+import { motion, AnimatePresence } from 'framer-motion'; // 櫨 IMPORTED FRAMER MOTION
+
+// 🔥 NEW IMPORTS FOR PROPER SIGNOUT
+import { supabase } from '../utils/supabase';
+import toast from 'react-hot-toast';
 
 // Components 
 import SearchBar from './common/SearchBar';
@@ -22,7 +26,7 @@ export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
-  // 🔥 NEW: State to control Mega Menu visibility
+  // 櫨 NEW: State to control Mega Menu visibility
   const [isMegaMenuOpen, setIsMegaMenuOpen] = useState(false);
   let timeoutId = useRef(null); // To add a slight delay for smooth hover experience
 
@@ -74,16 +78,36 @@ export default function Header() {
     };
   }, []);
 
-  // 4. Sign Out Handler
-  const handleSignOut = () => {
-    localStorage.removeItem('currentUser');
-    setCurrentUser(null);
-    setIsUserDropdownOpen(false);
-    window.dispatchEvent(new Event('userStateChange'));
-    router.push('/');
+  // 🔥 4. SECURE SIGN OUT HANDLER (FIXED GHOST SESSION)
+  const handleSignOut = async () => {
+    try {
+      // 1. Kill session in Supabase backend
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+
+      // 2. Completely wipe local and session storage
+      localStorage.clear();
+      sessionStorage.clear();
+
+      // 3. Reset Local State
+      setCurrentUser(null);
+      setIsUserDropdownOpen(false);
+
+      // 4. Notify app and user
+      window.dispatchEvent(new Event('userStateChange'));
+      toast.success("Signed out securely.");
+
+      // 5. Hard redirect and refresh to clear cached pages
+      router.push('/');
+      router.refresh();
+
+    } catch (error) {
+      console.error("Sign out error:", error);
+      toast.error("Failed to sign out properly.");
+    }
   };
 
-  // 🔥 HANDLERS FOR MEGA MENU HOVER
+  // 櫨 HANDLERS FOR MEGA MENU HOVER
   const handleMouseEnterMegaMenu = () => {
     clearTimeout(timeoutId.current);
     setIsMegaMenuOpen(true);
@@ -109,7 +133,7 @@ export default function Header() {
 
             {/* Premium Minimalist Logo */}
             <Link href="/" className="text-3xl font-extrabold text-stone-900 tracking-tighter flex items-baseline relative z-10">
-              ShopHubStyle<span className="text-stone-400 text-4xl leading-none">.</span>
+              ShopHub<span className="text-stone-400 text-4xl leading-none">.</span>
             </Link>
 
             {/* Desktop Navigation (Premium Typography) */}
@@ -117,7 +141,7 @@ export default function Header() {
               <Link href="/shop?filter=new-arrivals" className="text-xs font-bold tracking-widest uppercase text-stone-500 hover:text-stone-900 transition-colors duration-300 py-2">New In</Link>
               <Link href="/shop" className="text-xs font-bold tracking-widest uppercase text-stone-500 hover:text-stone-900 transition-colors duration-300 py-2">Shop</Link>
 
-              {/* 🔥 COLLECTIONS LINK WITH MEGA MENU TRIGGER */}
+              {/* 櫨 COLLECTIONS LINK WITH MEGA MENU TRIGGER */}
               <div
                 className="h-full flex items-center py-2"
                 onMouseEnter={handleMouseEnterMegaMenu}
@@ -279,7 +303,7 @@ export default function Header() {
           </div>
         </div>
 
-        {/* 🔥 LUXURY MEGA MENU (FRAMER MOTION) */}
+        {/* 櫨 LUXURY MEGA MENU (FRAMER MOTION) */}
         <AnimatePresence>
           {isMegaMenuOpen && (
             <motion.div

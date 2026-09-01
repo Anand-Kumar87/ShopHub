@@ -2,7 +2,6 @@
   "name": "Shop-Hub",
   "version": "1.0.0",
   "description": "Professional full stack website  system with backend database integration",
-  "main": "server.js",
   "scripts": {
     "dev": "next dev",
     "build": "npx prisma generate && next build",

@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FiCheck, FiAlertCircle, FiX } from 'react-icons/fi';
 import { FaGoogle, FaFacebookF } from 'react-icons/fa';
-// Is se replace karein (using @ path jo Next.js mein best hota hai):
 import { supabase } from '../utils/supabase';
 
 export default function LoginPage() {
@@ -74,17 +73,16 @@ export default function LoginPage() {
 
             localStorage.setItem('currentUser', JSON.stringify(userState));
 
-            // THE FIX: Trigger event so Header updates instantly without reload
             window.dispatchEvent(new Event('userStateChange'));
 
             setStatus('success');
 
-            // 4. Role-based redirect
+            // 🔥 THE FIX: Hard Redirect to force Cookie sync with Next.js Middleware
             setTimeout(() => {
                 if (userState.role === 'admin') {
-                    router.push('/admin');
+                    window.location.href = '/admin';
                 } else {
-                    router.push('/account');
+                    window.location.href = '/account';
                 }
             }, 1500);
 
@@ -102,7 +100,6 @@ export default function LoginPage() {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: platform.toLowerCase(),
                 options: {
-                    // Redirect back to account page after successful Google/Facebook login
                     redirectTo: `${window.location.origin}/account`
                 }
             });

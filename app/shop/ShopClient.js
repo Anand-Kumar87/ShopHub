@@ -28,13 +28,24 @@ const fetchCategories = async () => {
     }
 };
 
+// Keep this in sync with the PRODUCT_COLUMNS constant in page.js so the
+// server (SSR) fetch and this client fetch return identical product shapes.
+const PRODUCT_COLUMNS = 'id,name,description,price,salePrice,oldPrice,category,images,image_url,colors,sizes,tags,rating,reviews,stock,status,onSale,created_at';
+
+// 🔥 FIX: fetches the FULL catalog directly from Supabase instead of going
+// through /api/products (which caps at 50 items) — so category filters,
+// search, and pagination on this page always see every product, no matter
+// how large the catalog grows.
 const fetchProducts = async () => {
     try {
-        const res = await fetch('/api/products?limit=100');
-        if (!res.ok) throw new Error('API Error');
-        const data = await res.json();
+        const { data, error } = await supabase
+            .from('products')
+            .select(PRODUCT_COLUMNS)
+            .order('created_at', { ascending: false });
 
-        const activeProds = (data.products || []).filter(p => {
+        if (error) throw error;
+
+        const activeProds = (data || []).filter(p => {
             const stat = (p.status || '').toLowerCase();
             return stat !== 'archived' && stat !== 'draft';
         });

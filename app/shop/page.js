@@ -3,11 +3,15 @@ import ShopClient from './ShopClient';
 
 export const revalidate = 60;
 
+// Keep this in sync with the PRODUCT_COLUMNS constant in ShopClient.js
+// so the server fetch and the client SWR fetch return identical shapes.
+const PRODUCT_COLUMNS = 'id,name,description,price,salePrice,oldPrice,category,images,image_url,colors,sizes,tags,rating,reviews,stock,status,onSale,created_at';
+
 export default async function ShopPage() {
     try {
         const [categoriesRes, productsRes] = await Promise.all([
             supabase.from('categories').select('*'),
-            supabase.from('products').select('*')
+            supabase.from('products').select(PRODUCT_COLUMNS)
         ]);
 
         const categories = categoriesRes.data && categoriesRes.data.length > 0

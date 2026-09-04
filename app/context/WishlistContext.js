@@ -1,113 +1,115 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '../utils/supabase'; // 🔥 Make sure this path is correct
+import { supabase } from '../utils/supabase';
 
 const WishlistContext = createContext();
 
+// 🔥 Safe JSON Parser to prevent crashes
+const safeJsonParse = (key, fallback) => {
+    try {
+        const item = localStorage.getItem(key);
+        return item ? JSON.parse(item) : fallback;
+    } catch (e) {
+        return fallback;
+    }
+};
+
 export function WishlistProvider({ children }) {
     const [wishlistItems, setWishlistItems] = useState([]);
-    const [userEmail, setUserEmail] = useState(null);
+    const [userId, setUserId] = useState(null);
 
-    // 🔥 Load Wishlist on Mount (Checks if user is logged in)
-    useEffect(() => {
-        const localUser = JSON.parse(localStorage.getItem('currentUser'));
-
-        if (localUser && localUser.email) {
-            setUserEmail(localUser.email);
-            fetchWishlistFromDB(localUser.email);
+    const initWishlist = () => {
+        const localUser = safeJsonParse('currentUser', null);
+        if (localUser?.id) {
+            setUserId(localUser.id);
+            fetchWishlistFromDB(localUser.id);
         } else {
-            // Guest User (Not logged in) - Load from Local Storage temporarily
-            const savedWishlist = JSON.parse(localStorage.getItem('shophub_wishlist_guest')) || [];
-            setWishlistItems(savedWishlist);
+            setUserId(null);
+            setWishlistItems(safeJsonParse('shophub_wishlist_guest', []));
         }
+    };
+
+    useEffect(() => {
+        initWishlist();
+        window.addEventListener('userStateChange', initWishlist);
+        return () => window.removeEventListener('userStateChange', initWishlist);
     }, []);
 
-    // 🔥 Fetch from Supabase
-    const fetchWishlistFromDB = async (email) => {
+    const fetchWishlistFromDB = async (uid) => {
         try {
             const { data, error } = await supabase
                 .from('wishlist')
                 .select('product_data')
-                .eq('user_email', email);
+                .eq('user_id', uid); // 🔥 Correctly requesting user_id, NOT user_email
 
             if (error) throw error;
-
-            if (data) {
-                // Extract product data from the database rows
-                const products = data.map(item => item.product_data);
-                setWishlistItems(products);
-            }
+            if (data) setWishlistItems(data.map(item => item.product_data));
         } catch (err) {
-            console.error("Error fetching wishlist from DB:", err);
+            console.error("DB Fetch Error:", err);
         }
     };
 
-    // 🔥 Add to Wishlist (Supabase + Realtime UI)
     const addToWishlist = async (product) => {
-        // 1. Fast UI Update (Optimistic update)
+        const prevItems = [...wishlistItems];
+
+        // Instant UI Update
         setWishlistItems((prev) => {
-            if (!prev.find((item) => item.id === product.id)) {
-                return [...prev, product];
-            }
+            if (!prev.find((item) => item.id === product.id)) return [...prev, product];
             return prev;
         });
 
-        // 2. Database Update
-        if (userEmail) {
+        if (userId) {
             try {
-                await supabase
+                const { error } = await supabase
                     .from('wishlist')
                     .insert([{
-                        user_email: userEmail,
-                        product_id: product.id,
+                        user_id: userId, // 🔥 Match database UUID
+                        product_id: product.id.toString(),
                         product_data: product
                     }]);
+
+                if (error) throw error;
             } catch (err) {
-                console.error("Error saving to DB:", err);
+                console.error("DB Insert Error:", err);
+                setWishlistItems(prevItems); // Rollback UI if DB fails
             }
         } else {
-            // Guest User Save
-            const current = JSON.parse(localStorage.getItem('shophub_wishlist_guest')) || [];
-            localStorage.setItem('shophub_wishlist_guest', JSON.stringify([...current, product]));
+            // Guest User
+            const current = safeJsonParse('shophub_wishlist_guest', []);
+            if (!current.find((item) => item.id === product.id)) {
+                localStorage.setItem('shophub_wishlist_guest', JSON.stringify([...current, product]));
+            }
         }
     };
 
-    // 🔥 Remove from Wishlist (Supabase + Realtime UI)
     const removeFromWishlist = async (productId) => {
-        // 1. Fast UI Update
+        const prevItems = [...wishlistItems];
         setWishlistItems((prev) => prev.filter((item) => item.id !== productId));
 
-        // 2. Database Update
-        if (userEmail) {
+        if (userId) {
             try {
-                await supabase
+                const { error } = await supabase
                     .from('wishlist')
                     .delete()
-                    .eq('user_email', userEmail)
-                    .eq('product_id', productId);
+                    .eq('user_id', userId)
+                    .eq('product_id', productId.toString());
+
+                if (error) throw error;
             } catch (err) {
-                console.error("Error removing from DB:", err);
+                console.error("DB Delete Error:", err);
+                setWishlistItems(prevItems);
             }
         } else {
-            // Guest User Remove
-            const current = JSON.parse(localStorage.getItem('shophub_wishlist_guest')) || [];
+            const current = safeJsonParse('shophub_wishlist_guest', []);
             localStorage.setItem('shophub_wishlist_guest', JSON.stringify(current.filter(item => item.id !== productId)));
         }
     };
 
-    // Check if item is in wishlist
-    const isInWishlist = (productId) => {
-        return wishlistItems.some((item) => item.id === productId);
-    };
+    const isInWishlist = (productId) => wishlistItems.some((item) => item.id === productId);
 
     return (
-        <WishlistContext.Provider value={{
-            wishlistItems,
-            addToWishlist,
-            removeFromWishlist,
-            isInWishlist
-        }}>
+        <WishlistContext.Provider value={{ wishlistItems, addToWishlist, removeFromWishlist, isInWishlist }}>
             {children}
         </WishlistContext.Provider>
     );

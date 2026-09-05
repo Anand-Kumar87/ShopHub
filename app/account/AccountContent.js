@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import useSWR from 'swr';
 import { supabase } from '../utils/supabase';
 import { useGlobalCurrency } from '../context/CurrencyContext';
 import { useWishlist } from '../context/WishlistContext';
@@ -48,27 +49,53 @@ const getExpectedDelivery = (orderDateString, currentStatus) => {
     return `Expected by ${deliveryDate.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })} (2:00 PM - 7:00 PM)`;
 };
 
+// 🔥 Fetches everything the account page needs in one shot. Defined at
+// module scope (like fetchCategories/fetchProducts on the shop page) so
+// SWR's cache key stays stable — this is what lets a return visit to
+// /account reuse cached data instantly instead of re-querying Supabase.
+const fetchAccountData = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return null; // caller redirects to /login
+
+    const [profRes, payRes, ordRes, coupRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', session.user.id).single(),
+        supabase.from('user_payments').select('*').eq('user_id', session.user.id).order('created_at', { ascending: true }),
+        supabase.from('orders').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false }).limit(15),
+        supabase.from('coupons').select('*')
+    ]);
+
+    return {
+        id: session.user.id,
+        email: session.user.email,
+        firstName: profRes.data?.first_name || '',
+        lastName: profRes.data?.last_name || '',
+        role: profRes.data?.role || 'customer',
+        paymentMethods: payRes.data || [],
+        orders: ordRes.data || [],
+        coupons: coupRes.data || []
+    };
+};
+
 export default function AccountContent({ serverUser, serverOrders, serverCoupons }) {
     const router = useRouter();
     const { currency, convertPrice } = useGlobalCurrency() || { currency: 'USD', convertPrice: (v) => `$${v}` };
     const { wishlistItems } = useWishlist() || { wishlistItems: [] };
 
+    // 🔥 0ms LOCAL CACHE LOAD
     const [user, setUser] = useState(() => {
-        if (serverUser && Object.keys(serverUser).length > 0) return serverUser;
         if (typeof window !== 'undefined') {
-            const cachedUser = localStorage.getItem('shophub_real_user');
-            if (cachedUser) return JSON.parse(cachedUser);
+            const cached = localStorage.getItem('currentUser');
+            if (cached) return JSON.parse(cached);
         }
-        return {};
+        return serverUser || {};
     });
 
     const [orders, setOrders] = useState(() => {
-        if (serverOrders && serverOrders.length > 0) return serverOrders;
         if (typeof window !== 'undefined') {
-            const cachedOrders = localStorage.getItem('shophub_real_orders');
-            if (cachedOrders) return JSON.parse(cachedOrders);
+            const cached = localStorage.getItem('shophub_db_orders');
+            if (cached) return JSON.parse(cached);
         }
-        return [];
+        return serverOrders || [];
     });
 
     const [coupons, setCoupons] = useState(() => serverCoupons || []);
@@ -90,69 +117,57 @@ export default function AccountContent({ serverUser, serverOrders, serverCoupons
         upiId: '', bankName: '', accountNumber: '', ifscCode: '', accountName: '', isDefault: false
     });
 
-    useEffect(() => {
-        let isMounted = true;
+    // 🔥 SWR handles the actual network call — dedupingInterval means a
+    // return visit to /account within 5 minutes reuses this cached result
+    // instantly instead of re-querying Supabase, which is what fixes the
+    // "reloads every time I come back from Wishlist" problem.
+    const { data: swrAccount } = useSWR('account_data', fetchAccountData, {
+        revalidateOnFocus: false,
+        dedupingInterval: 5 * 60 * 1000
+    });
 
+    // 🔥 SILENT BACKGROUND SYNC — same side effects as before (redirect,
+    // localStorage caching, form sync), just sourced from swrAccount
+    // instead of an inline fetch on every mount.
+    useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('viewOrder')) {
             setActiveTab('orders');
             window.history.replaceState(null, '', window.location.pathname);
         }
+    }, []);
 
-        const fetchRealDataFromDB = async () => {
-            if (serverUser?.id && Array.isArray(serverOrders) && Array.isArray(serverCoupons)) {
-                return;
-            }
+    useEffect(() => {
+        if (swrAccount === undefined) return; // still loading
 
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                router.push('/login');
-                return;
-            }
+        if (swrAccount === null) {
+            router.push('/login');
+            return;
+        }
 
-            try {
-                const { data: profileData, error: profErr } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
-                const { data: paymentsData, error: payErr } = await supabase.from('user_payments').select('*').eq('user_id', session.user.id).order('created_at', { ascending: true });
-                const { data: ordersData, error: ordErr } = await supabase.from('orders').select('id, created_at, status, total_amount, items, shippingAddress, shipping, shipping_address, city, state, postalCode, country, subtotal, tax, payment_method, paymentStatus, totals, coupon, date').eq('user_id', session.user.id).order('created_at', { ascending: false }).limit(15);
-                const { data: couponsData, error: coupErr } = await supabase.from('coupons').select('*');
-
-                if (!isMounted) return;
-
-                const existingLocalUser = JSON.parse(localStorage.getItem('shophub_real_user') || '{}');
-
-                const realUser = {
-                    id: session.user.id,
-                    email: session.user.email,
-                    firstName: profErr ? (existingLocalUser.firstName || '') : (profileData?.first_name || session.user.user_metadata?.first_name || ''),
-                    lastName: profErr ? (existingLocalUser.lastName || '') : (profileData?.last_name || session.user.user_metadata?.last_name || ''),
-                    role: profErr ? (existingLocalUser.role || 'customer') : (profileData?.role || 'customer'),
-                    paymentMethods: payErr ? (existingLocalUser.paymentMethods || []) : (paymentsData || [])
-                };
-
-                setUser(realUser);
-                try { localStorage.setItem('shophub_real_user', JSON.stringify(realUser)); } catch (e) { }
-
-                setAccountForm(prev => ({ ...prev, firstName: realUser.firstName, lastName: realUser.lastName, email: realUser.email }));
-
-                if (!ordErr && ordersData) {
-                    setOrders(ordersData);
-                    try { localStorage.setItem('shophub_real_orders', JSON.stringify(ordersData)); } catch (error) { }
-                }
-
-                if (!coupErr && couponsData) {
-                    setCoupons(couponsData);
-                }
-
-            } catch (error) {
-                console.error("Real DB Fetch Error:", error);
-            }
+        const existingUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        const updatedUser = {
+            ...existingUser,
+            id: swrAccount.id,
+            email: swrAccount.email,
+            firstName: swrAccount.firstName || existingUser.firstName || '',
+            lastName: swrAccount.lastName || existingUser.lastName || '',
+            role: swrAccount.role || existingUser.role || 'customer',
+            paymentMethods: swrAccount.paymentMethods
         };
 
-        fetchRealDataFromDB();
+        setUser(updatedUser);
+        try { localStorage.setItem('currentUser', JSON.stringify(updatedUser)); } catch (e) { }
 
-        return () => { isMounted = false; };
-    }, [router, serverUser, serverOrders, serverCoupons]);
+        setAccountForm(prev => ({ ...prev, firstName: updatedUser.firstName, lastName: updatedUser.lastName, email: updatedUser.email }));
 
+        setOrders(swrAccount.orders);
+        try { localStorage.setItem('shophub_db_orders', JSON.stringify(swrAccount.orders)); } catch (error) { }
+
+        setCoupons(swrAccount.coupons);
+    }, [swrAccount, router]);
+
+    // 🔥 REAL REWARDS ENGINE
     const { rewards, couponsCount } = useMemo(() => {
         if (!coupons || coupons.length === 0) return { rewards: [], couponsCount: 0 };
 
@@ -167,13 +182,14 @@ export default function AccountContent({ serverUser, serverOrders, serverCoupons
         return { rewards: generatedRewards, couponsCount: generatedRewards.length };
     }, [orders.length, coupons]);
 
+    // Live Order Updates
     useEffect(() => {
         if (!user?.id) return;
         const channel = supabase.channel(`live-orders-${user.id}`)
             .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `user_id=eq.${user.id}` }, payload => {
                 setOrders(curr => {
                     const updated = curr.map(o => o.id === payload.new.id ? payload.new : o);
-                    try { localStorage.setItem('shophub_real_orders', JSON.stringify(updated.slice(0, 15))); } catch (e) { }
+                    try { localStorage.setItem('shophub_db_orders', JSON.stringify(updated.slice(0, 15))); } catch (e) { }
                     return updated;
                 });
                 setSelectedOrder(curr => curr?.id === payload.new.id ? payload.new : curr);
@@ -194,8 +210,8 @@ export default function AccountContent({ serverUser, serverOrders, serverCoupons
 
     const handleSignOut = async () => {
         await supabase.auth.signOut();
-        localStorage.removeItem('shophub_real_user');
-        localStorage.removeItem('shophub_real_orders');
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('shophub_db_orders');
         window.dispatchEvent(new Event('userStateChange'));
         router.push('/login');
     };
@@ -221,7 +237,7 @@ export default function AccountContent({ serverUser, serverOrders, serverCoupons
 
             const updatedUser = { ...user, firstName: accountForm.firstName, lastName: accountForm.lastName };
             setUser(updatedUser);
-            try { localStorage.setItem('shophub_real_user', JSON.stringify(updatedUser)); } catch (e) { }
+            try { localStorage.setItem('currentUser', JSON.stringify(updatedUser)); } catch (e) { }
 
             setAccountForm(prev => ({ ...prev, currentPassword: '', newPassword: '', confirmPassword: '' }));
             toast.success('Profile preferences updated successfully.');
@@ -236,8 +252,7 @@ export default function AccountContent({ serverUser, serverOrders, serverCoupons
         const safeCardNumber = paymentForm.cardNumber ? `•••• •••• •••• ${paymentForm.cardNumber.slice(-4)}` : null;
         const safeAccountNumber = paymentForm.accountNumber ? `••••••••${paymentForm.accountNumber.slice(-4)}` : null;
 
-        const newPaymentRecord = {
-            id: paymentForm.id || `pay_${Date.now()}`,
+        const insertData = {
             user_id: user.id,
             type: paymentType,
             cardType: paymentForm.cardType,
@@ -257,48 +272,50 @@ export default function AccountContent({ serverUser, serverOrders, serverCoupons
             if (paymentForm.isDefault) {
                 await supabase.from('user_payments').update({ isDefault: false }).eq('user_id', user.id);
             }
-            if (paymentForm.id && !paymentForm.id.startsWith('pay_')) {
-                await supabase.from('user_payments').update(newPaymentRecord).eq('id', paymentForm.id);
+
+            let realPaymentRecord;
+
+            if (paymentForm.id) {
+                const { data, error } = await supabase.from('user_payments').update(insertData).eq('id', paymentForm.id).select().single();
+                if (error) throw error;
+                realPaymentRecord = data;
             } else {
-                const { id, ...insertData } = newPaymentRecord;
-                await supabase.from('user_payments').insert([insertData]);
+                const { data, error } = await supabase.from('user_payments').insert([insertData]).select().single();
+                if (error) throw error;
+                realPaymentRecord = data;
             }
+
+            const currentMethods = user.paymentMethods || [];
+            let updatedMethods = paymentForm.id
+                ? currentMethods.map(m => m.id === paymentForm.id ? realPaymentRecord : m)
+                : [realPaymentRecord, ...currentMethods];
+
+            if (paymentForm.isDefault) {
+                updatedMethods = updatedMethods.map(m => ({ ...m, isDefault: m.id === realPaymentRecord.id }));
+            }
+
+            const updatedUser = { ...user, paymentMethods: updatedMethods };
+            setUser(updatedUser);
+            try { localStorage.setItem('currentUser', JSON.stringify(updatedUser)); } catch (e) { }
+
+            setPaymentModalOpen(false);
+            toast.success(`Payment method ${paymentForm.id ? 'updated' : 'added'} securely.`);
         } catch (err) {
-            console.warn("Payment Sync Error:", err);
+            console.error("Payment Sync Error:", err);
+            toast.error("Could not save payment method.");
         }
-
-        const currentMethods = user.paymentMethods || [];
-        let updatedMethods = [];
-        if (paymentForm.id) {
-            updatedMethods = currentMethods.map(m => m.id === paymentForm.id ? newPaymentRecord : m);
-        } else {
-            updatedMethods = [newPaymentRecord, ...currentMethods];
-        }
-
-        if (paymentForm.isDefault) {
-            updatedMethods = updatedMethods.map(m => ({ ...m, isDefault: m.id === newPaymentRecord.id }));
-        }
-
-        const updatedUser = { ...user, paymentMethods: updatedMethods };
-        setUser(updatedUser);
-        try { localStorage.setItem('shophub_real_user', JSON.stringify(updatedUser)); } catch (e) { }
-
-        setPaymentModalOpen(false);
-        toast.success(`Payment method ${paymentForm.id ? 'updated' : 'added'} securely.`);
     };
 
     const deletePaymentMethod = async (paymentId) => {
         if (window.confirm('Remove this payment method?')) {
-            if (!paymentId.toString().startsWith('pay_')) {
-                try {
-                    await supabase.from('user_payments').delete().eq('id', paymentId);
-                } catch (err) { }
-            }
+            try {
+                await supabase.from('user_payments').delete().eq('id', paymentId);
+            } catch (err) { }
 
             const updatedMethods = (user.paymentMethods || []).filter(m => m.id !== paymentId);
             const updatedUser = { ...user, paymentMethods: updatedMethods };
             setUser(updatedUser);
-            try { localStorage.setItem('shophub_real_user', JSON.stringify(updatedUser)); } catch (e) { }
+            try { localStorage.setItem('currentUser', JSON.stringify(updatedUser)); } catch (e) { }
             toast.success('Payment method removed.');
         }
     };
@@ -310,7 +327,7 @@ export default function AccountContent({ serverUser, serverOrders, serverCoupons
                 const updatedOrders = orders.map(o => o.id === orderId ? { ...o, status: 'Cancelled' } : o);
                 setOrders(updatedOrders);
                 setSelectedOrder(updatedOrders.find(o => o.id === orderId));
-                try { localStorage.setItem('shophub_real_orders', JSON.stringify(updatedOrders.slice(0, 15))); } catch (e) { }
+                try { localStorage.setItem('shophub_db_orders', JSON.stringify(updatedOrders.slice(0, 15))); } catch (e) { }
                 toast.success('Order cancelled successfully.');
             }
         }

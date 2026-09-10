@@ -54,7 +54,16 @@ const getExpectedDelivery = (orderDateString, currentStatus) => {
 // SWR's cache key stays stable — this is what lets a return visit to
 // /account reuse cached data instantly instead of re-querying Supabase.
 const fetchAccountData = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    let { data: { session } } = await supabase.auth.getSession();
+
+    // 🔥 FIX: on a hard reload, the Supabase client is sometimes still
+    // restoring the session from storage when this fires, causing a
+    // false "logged out" read. Give it one short retry before giving up.
+    if (!session) {
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        ({ data: { session } } = await supabase.auth.getSession());
+    }
+
     if (!session) return null; // caller redirects to /login
 
     const [profRes, payRes, ordRes, coupRes] = await Promise.all([

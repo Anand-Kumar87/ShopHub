@@ -11,6 +11,7 @@ import {
 } from 'react-icons/fi';
 import { useCart } from '../context/CartContext';
 import { useGlobalCurrency } from '../context/CurrencyContext';
+import { mutate } from 'swr';
 import toast from 'react-hot-toast';
 
 export default function CheckoutPage() {
@@ -280,22 +281,28 @@ export default function CheckoutPage() {
 
         setIsProcessingPayment(true);
 
-        // 🔥 FIX: Generate Order Number from Real Database, NOT LocalStorage
+        // 🔥 FIX: scan ALL order numbers for the true max, instead of trusting
+        // just the single most-recent-by-created_at row (which breaks if any
+        // order — e.g. one added manually via the DB — has a missing/odd
+        // orderNumber or created_at, causing the sequence to silently reset).
         let nextIdNum = 1;
         try {
-            const { data: latestOrders, error } = await supabase
+            const { data: allOrders, error } = await supabase
                 .from('orders')
                 .select('orderNumber')
-                .order('created_at', { ascending: false })
-                .limit(1);
+                .not('orderNumber', 'is', null);
 
-            if (latestOrders && latestOrders.length > 0 && latestOrders[0].orderNumber) {
-                const match = String(latestOrders[0].orderNumber).match(/\d+$/);
-                const num = match ? parseInt(match[0], 10) : 0;
-                nextIdNum = num + 1;
-            }
+            let maxNum = 0;
+            (allOrders || []).forEach(o => {
+                const match = String(o.orderNumber).match(/\d+$/);
+                if (match) {
+                    const n = parseInt(match[0], 10);
+                    if (n > maxNum) maxNum = n;
+                }
+            });
+            nextIdNum = maxNum + 1;
         } catch (dbErr) {
-            console.warn("Could not fetch latest order ID from database, using fallback.");
+            console.warn("Could not fetch existing order numbers from database, using fallback.");
             nextIdNum = Math.floor(10000 + Math.random() * 90000);
         }
 
@@ -469,6 +476,11 @@ export default function CheckoutPage() {
                 toast.success("Order placed successfully! 🎉", { icon: '✨' });
                 setShowCelebration(true);
                 setTimeout(() => setShowCelebration(false), 5000);
+
+                // 🔥 FIX: tell the account page's cached data (orders count,
+                // rewards, etc.) that it's stale, so it shows the new order
+                // immediately instead of waiting out its 5-minute cache window.
+                mutate('account_data');
 
                 for (const item of orderPayload.items) {
                     const { data: productData } = await supabase.from('products').select('stock').eq('id', item.id).single();
@@ -1052,10 +1064,10 @@ export default function CheckoutPage() {
                         </div>
 
                         <div className="flex flex-col gap-3">
-                            <Link href={`/account?tab=orders`} className="w-full bg-stone-900 text-white text-xs font-bold tracking-widest uppercase px-8 py-4 rounded-full hover:bg-stone-800 transition-colors shadow-lg shadow-stone-900/10 text-center flex items-center justify-center">
+                            <Link href={`/account?tab=orders`} onClick={() => { document.body.style.overflow = 'unset'; }} className="w-full bg-stone-900 text-white text-xs font-bold tracking-widest uppercase px-8 py-4 rounded-full hover:bg-stone-800 transition-colors shadow-lg shadow-stone-900/10 text-center flex items-center justify-center">
                                 View in Account
                             </Link>
-                            <Link href="/" className="w-full bg-white text-stone-900 border border-stone-200 text-xs font-bold tracking-widest uppercase px-8 py-4 rounded-full hover:bg-stone-50 transition-colors text-center flex items-center justify-center">
+                            <Link href="/" onClick={() => { document.body.style.overflow = 'unset'; }} className="w-full bg-white text-stone-900 border border-stone-200 text-xs font-bold tracking-widest uppercase px-8 py-4 rounded-full hover:bg-stone-50 transition-colors text-center flex items-center justify-center">
                                 Return Home
                             </Link>
                         </div>

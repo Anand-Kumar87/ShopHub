@@ -16,6 +16,7 @@ import { useCart } from '../context/CartContext';
 import { useGlobalCurrency } from '../context/CurrencyContext';
 import { useWishlist } from '../context/WishlistContext';
 import { supabase } from '../utils/supabase';
+import { resolveSwatchColor } from '../utils/colorUtils';
 import MagneticButton from '../components/MagneticButton';
 
 // 🔥 SWR Fetchers (Background Sync) - Don't delete fetchCategories!
@@ -409,7 +410,7 @@ function ShopContent({ initialCategories, initialProducts }) {
                                                 {product.colors && product.colors.length > 0 && !isOutOfStock && (
                                                     <div className="flex gap-1.5 mb-2">
                                                         {product.colors.map((color, i) => (
-                                                            <div key={i} className="w-3.5 h-3.5 rounded-full border border-stone-200" style={{ backgroundColor: color }}></div>
+                                                            <div key={i} className="w-3.5 h-3.5 rounded-full border border-stone-200" style={{ backgroundColor: resolveSwatchColor(color) }}></div>
                                                         ))}
                                                     </div>
                                                 )}
@@ -537,7 +538,7 @@ function ShopContent({ initialCategories, initialProducts }) {
                                             <div className="flex gap-3">
                                                 {selectedProduct.colors.map(color => (
                                                     <button key={color} onClick={() => setSelectedColor(color)} className={`w-8 h-8 rounded-full border-2 transition-all flex items-center justify-center ${selectedColor === color ? 'border-stone-900 scale-110' : 'border-transparent hover:scale-110 shadow-sm'}`}>
-                                                        <span className="w-6 h-6 rounded-full border border-stone-200 block" style={{ backgroundColor: color }}></span>
+                                                        <span className="w-6 h-6 rounded-full border border-stone-200 block" style={{ backgroundColor: resolveSwatchColor(color) }}></span>
                                                     </button>
                                                 ))}
                                             </div>

@@ -1043,7 +1043,7 @@ export default function CheckoutPage() {
 
             {/* Success Modal (Glassmorphism) */}
             {isSuccessModalOpen && (
-                <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-md z-[200] flex items-start justify-center p-4 pt-16 animate-fade-in">
+                <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-md z-[200] flex items-start justify-center p-4 pt-16 pb-16 overflow-y-auto animate-fade-in">
                     <div className="bg-white rounded-3xl p-10 max-w-md mx-auto text-center transform scale-100 transition-transform shadow-2xl relative border border-stone-100">
                         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-stone-900 mb-6 shadow-xl shadow-stone-900/20">
                             <FiCheck className="text-2xl text-white" />

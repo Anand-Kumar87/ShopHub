@@ -69,7 +69,10 @@ const fetchAccountData = async () => {
     const [profRes, payRes, ordRes, coupRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', session.user.id).single(),
         supabase.from('user_payments').select('*').eq('user_id', session.user.id).order('created_at', { ascending: true }),
-        supabase.from('orders').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false }).limit(15),
+        // 🔥 FIX: { count: 'exact' } returns the TRUE total matching rows
+        // separately from `data`, so the "Total Orders" stat isn't capped
+        // by the .limit(15) used for the Recent Purchases preview list.
+        supabase.from('orders').select('*', { count: 'exact' }).eq('user_id', session.user.id).order('created_at', { ascending: false }).limit(15),
         supabase.from('coupons').select('*')
     ]);
 
@@ -81,6 +84,7 @@ const fetchAccountData = async () => {
         role: profRes.data?.role || 'customer',
         paymentMethods: payRes.data || [],
         orders: ordRes.data || [],
+        totalOrders: ordRes.count ?? (ordRes.data || []).length,
         coupons: coupRes.data || []
     };
 };
@@ -90,24 +94,26 @@ export default function AccountContent({ serverUser, serverOrders, serverCoupons
     const { currency, convertPrice } = useGlobalCurrency() || { currency: 'USD', convertPrice: (v) => `$${v}` };
     const { wishlistItems } = useWishlist() || { wishlistItems: [] };
 
-    // 🔥 0ms LOCAL CACHE LOAD
-    const [user, setUser] = useState(() => {
-        if (typeof window !== 'undefined') {
-            const cached = localStorage.getItem('currentUser');
-            if (cached) return JSON.parse(cached);
-        }
-        return serverUser || {};
-    });
+    // 🔥 Same initial value on server AND client (fixes a hydration
+    // mismatch — reading localStorage inside a useState initializer meant
+    // the client's very first render differed from the server's HTML).
+    const [user, setUser] = useState(serverUser || {});
+    const [orders, setOrders] = useState(serverOrders || []);
+    const [totalOrders, setTotalOrders] = useState(serverOrders?.length || 0);
+    const [coupons, setCoupons] = useState(serverCoupons || []);
 
-    const [orders, setOrders] = useState(() => {
-        if (typeof window !== 'undefined') {
-            const cached = localStorage.getItem('shophub_db_orders');
-            if (cached) return JSON.parse(cached);
-        }
-        return serverOrders || [];
-    });
-
-    const [coupons, setCoupons] = useState(() => serverCoupons || []);
+    // 🔥 0ms LOCAL CACHE LOAD — moved into an effect (runs client-only,
+    // right after mount/hydration) so it can no longer cause a mismatch.
+    useEffect(() => {
+        try {
+            const cachedUser = localStorage.getItem('currentUser');
+            if (cachedUser) setUser(JSON.parse(cachedUser));
+        } catch (e) { }
+        try {
+            const cachedOrders = localStorage.getItem('shophub_db_orders');
+            if (cachedOrders) setOrders(JSON.parse(cachedOrders));
+        } catch (e) { }
+    }, []);
 
     const [activeTab, setActiveTab] = useState('dashboard');
     const [selectedOrder, setSelectedOrder] = useState(null);
@@ -172,6 +178,7 @@ export default function AccountContent({ serverUser, serverOrders, serverCoupons
 
         setOrders(swrAccount.orders);
         try { localStorage.setItem('shophub_db_orders', JSON.stringify(swrAccount.orders)); } catch (error) { }
+        setTotalOrders(swrAccount.totalOrders ?? swrAccount.orders.length);
 
         setCoupons(swrAccount.coupons);
     }, [swrAccount, router]);
@@ -181,7 +188,7 @@ export default function AccountContent({ serverUser, serverOrders, serverCoupons
         if (!coupons || coupons.length === 0) return { rewards: [], couponsCount: 0 };
 
         const sortedCoupons = [...coupons].sort((a, b) => a.discount - b.discount);
-        const orderCount = orders.length;
+        const orderCount = totalOrders;
         const generatedRewards = [];
 
         if (sortedCoupons[0]) generatedRewards.push({ ...sortedCoupons[0], title: 'Welcome Client Bonus', description: 'Enjoy this exclusive reward off your next curation.' });
@@ -189,7 +196,7 @@ export default function AccountContent({ serverUser, serverOrders, serverCoupons
         if (orderCount >= 5 && sortedCoupons[2]) generatedRewards.push({ ...sortedCoupons[2], title: 'Maison VIP Reward', description: 'Our highest tier discount for your exquisite taste.' });
 
         return { rewards: generatedRewards, couponsCount: generatedRewards.length };
-    }, [orders.length, coupons]);
+    }, [totalOrders, coupons]);
 
     // Live Order Updates
     useEffect(() => {
@@ -446,7 +453,7 @@ export default function AccountContent({ serverUser, serverOrders, serverCoupons
                                             <div className="w-12 h-12 bg-stone-50 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-stone-900 group-hover:text-white transition-colors">
                                                 <FiShoppingBag size={20} />
                                             </div>
-                                            <div className="text-3xl font-light text-stone-900 mb-1">{orders.length}</div>
+                                            <div className="text-3xl font-light text-stone-900 mb-1">{totalOrders}</div>
                                             <div className="text-[10px] font-bold tracking-widest uppercase text-stone-400">Total Orders</div>
                                         </div>
                                         <Link href="/wishlist" className="border border-stone-200 rounded-2xl p-8 text-center hover:border-stone-900 transition-colors group cursor-pointer">

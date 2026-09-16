@@ -9,6 +9,7 @@ import SWRProvider from './providers';
 import { Toaster } from 'react-hot-toast';
 import GlobalErrorBoundary from './components/common/GlobalErrorBoundary';
 import TelemetryInitializer from './components/common/TelemetryInitializer';
+import CookieConsent from './components/common/CookieConsent';
 
 // 🔥 NEW: MOBILE ZOOM FIX
 export const viewport = {
@@ -120,6 +121,9 @@ export default function RootLayout({ children }) {
 
                 {/* 3. Global Footer */}
                 <Footer />
+
+                {/* 4. Luxury Cookie & Privacy Consent Banner */}
+                <CookieConsent />
 
                 </CurrencyProvider>
               </WishlistProvider>

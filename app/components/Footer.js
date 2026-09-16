@@ -145,6 +145,15 @@ export default function Footer() {
               <li><Link href="/blog" className="hover:text-white transition-colors duration-200">Journal / Blog</Link></li>
               <li><Link href="/privacy-policy" className="hover:text-white transition-colors duration-200">Privacy Policy</Link></li>
               <li><Link href="/terms" className="hover:text-white transition-colors duration-200">Terms of Service</Link></li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => typeof window !== 'undefined' && window.dispatchEvent(new Event('openCookiePreferences'))}
+                  className="hover:text-white text-stone-400 transition-colors duration-200 text-left"
+                >
+                  Cookie Preferences
+                </button>
+              </li>
             </ul>
           </div>
 

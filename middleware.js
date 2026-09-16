@@ -1,27 +1,84 @@
+import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 
-export function middleware(request) {
-    // Current URL nikalna
+export async function middleware(request) {
+    let supabaseResponse = NextResponse.next({ request });
+
+    const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+        {
+            cookies: {
+                getAll() {
+                    return request.cookies.getAll();
+                },
+                setAll(cookiesToSet) {
+                    cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+                    supabaseResponse = NextResponse.next({ request });
+                    cookiesToSet.forEach(({ name, value, options }) =>
+                        supabaseResponse.cookies.set(name, value, options)
+                    );
+                },
+            },
+        }
+    );
+
+    // 🔥 Secure Token Validation
+    const { data: { user } } = await supabase.auth.getUser();
+
     const path = request.nextUrl.pathname;
+    const searchParams = request.nextUrl.searchParams;
+    const code = searchParams.get('code');
 
-    // Sirf client-side se check karna thoda tricky hota hai middleware mein, 
-    // par Next.js cookies ka use karke isko strongly protect kar sakta hai.
-    // Jab hum Supabase Auth use karte hain, toh wo automatically ek cookie set karta hai 'sb-[project-id]-auth-token'
+    // 🔥 If request has an OAuth code, route to /auth/callback to exchange for session cookies
+    if (code) {
+        return NextResponse.redirect(
+            new URL(`/auth/callback?code=${encodeURIComponent(code)}&next=${encodeURIComponent(path)}`, request.url)
+        );
+    }
 
-    // Lekin simple role-checking ke liye, hum ek soft protection laga sakte hain 
-    // jo browser pe chalne wale dashboard ko redirect karega agar user admin nahi hai.
+    // Redirect or block unauthenticated users
+    if (!user) {
+        if (path.startsWith('/api/admin')) {
+            return NextResponse.json(
+                { error: 'Unauthorized: Valid administrative session required' },
+                { status: 401 }
+            );
+        }
+        if (path.startsWith('/admin')) {
+            return NextResponse.redirect(new URL('/login?redirect=/admin', request.url));
+        }
+        if (path.startsWith('/checkout')) {
+            return NextResponse.redirect(new URL('/checkout-login?redirect=/checkout', request.url));
+        }
+        if (path.startsWith('/account')) {
+            return NextResponse.redirect(new URL('/login?redirect=/account', request.url));
+        }
+    }
 
-    // Yahan hum simply define kar rahe hain ki kin paths ko protect karna hai
-    const isProtectedRoute = path.startsWith('/account');
-    const isAdminRoute = path.startsWith('/admin');
+    // Role-based database authorization for admin paths
+    if (user && (path.startsWith('/admin') || path.startsWith('/api/admin'))) {
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single();
 
-    // NOTE: Real robust protection Supabase SSR cookies se hoti hai, 
-    // par abhi frontend logic ke hisaab se hum pages ke andar useEffect se isko enforce karenge.
+        const role = (profile?.role || '').toLowerCase().trim();
+        if (role !== 'admin') {
+            if (path.startsWith('/api/')) {
+                return NextResponse.json(
+                    { error: 'Forbidden: Insufficient administrative privileges' },
+                    { status: 403 }
+                );
+            }
+            return NextResponse.redirect(new URL('/', request.url));
+        }
+    }
 
-    return NextResponse.next();
+    return supabaseResponse;
 }
 
-// Ye define karta hai ki middleware kahan kahan chalega
 export const config = {
-    matcher: ['/account/:path*', '/admin/:path*'],
+    matcher: ['/account/:path*', '/admin/:path*', '/checkout/:path*', '/api/admin/:path*'],
 };

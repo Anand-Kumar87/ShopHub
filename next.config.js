@@ -4,13 +4,48 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'images.unsplash.com', // अगर Unsplash की इमेजेज़ हैं
+        hostname: '*.supabase.co',
+        pathname: '/storage/v1/object/public/**',
       },
       {
         protocol: 'https',
-        hostname: 'lpirgaoexkspfulhfycc.supabase.co', // आपके Supabase प्रोजेक्ट का URL
+        hostname: 'lpirgaoexkspfulhfycc.supabase.co',
+        pathname: '/storage/v1/object/public/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      }
     ],
+  },
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=()',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+        ],
+      },
+    ];
   },
 };
 

@@ -1,11 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FiCheck, FiAlertCircle, FiX } from 'react-icons/fi';
 import { FaGoogle, FaFacebookF } from 'react-icons/fa';
-// Is se replace karein (using @ path jo Next.js mein best hota hai):
 import { supabase } from '../utils/supabase';
 
 export default function LoginPage() {
@@ -15,9 +14,41 @@ export default function LoginPage() {
     const [formData, setFormData] = useState({ email: '', password: '', rememberMe: false });
     const [status, setStatus] = useState('idle'); // 'idle', 'loading', 'success', 'error'
     const [errorMessage, setErrorMessage] = useState('');
+    const [redirectParam, setRedirectParam] = useState('');
 
     // Social Modals State
     const [activeModal, setActiveModal] = useState(null); // 'google-loading', 'facebook-loading', null
+
+    // Check existing session and pre-fill email if redirected from register
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const emailParam = params.get('email');
+        if (emailParam) {
+            setFormData(prev => ({ ...prev, email: emailParam }));
+        }
+        const redirect = params.get('redirect');
+        if (redirect) setRedirectParam(redirect);
+
+        async function checkSession() {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+                const redirect = params.get('redirect');
+                if (redirect && redirect.startsWith('/') && !redirect.startsWith('//')) {
+                    window.location.assign(redirect);
+                } else {
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('role')
+                        .eq('id', session.user.id)
+                        .maybeSingle();
+
+                    const role = (profile?.role || '').toLowerCase();
+                    window.location.assign(role === 'admin' ? '/admin' : '/account');
+                }
+            }
+        }
+        checkSession();
+    }, []);
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -74,19 +105,22 @@ export default function LoginPage() {
 
             localStorage.setItem('currentUser', JSON.stringify(userState));
 
-            // THE FIX: Trigger event so Header updates instantly without reload
             window.dispatchEvent(new Event('userStateChange'));
 
             setStatus('success');
 
-            // 4. Role-based redirect
+            // 🔥 Hard Redirect to force Cookie sync with Next.js Middleware
             setTimeout(() => {
-                if (userState.role === 'admin') {
-                    router.push('/admin');
+                const params = new URLSearchParams(window.location.search);
+                const redirect = params.get('redirect');
+                if (redirect && redirect.startsWith('/') && !redirect.startsWith('//')) {
+                    window.location.assign(redirect);
+                } else if (userState.role === 'admin') {
+                    window.location.assign('/admin');
                 } else {
-                    router.push('/account');
+                    window.location.assign('/account');
                 }
-            }, 1500);
+            }, 600);
 
         } catch (error) {
             setErrorMessage(error.message || 'Invalid login credentials. Please try again.');
@@ -99,11 +133,19 @@ export default function LoginPage() {
         setActiveModal(`${platform.toLowerCase()}-loading`);
 
         try {
+            const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+            const redirect = params?.get('redirect');
+            const targetPath = (redirect && redirect.startsWith('/') && !redirect.startsWith('//'))
+                ? redirect
+                : '/account';
+
+            // Point redirectTo to /auth/callback with the intended target path
+            const callbackUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(targetPath)}`;
+
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: platform.toLowerCase(),
                 options: {
-                    // Redirect back to account page after successful Google/Facebook login
-                    redirectTo: `${window.location.origin}/account`
+                    redirectTo: callbackUrl
                 }
             });
             if (error) throw error;
@@ -208,7 +250,7 @@ export default function LoginPage() {
                             <div className="mt-10 text-center">
                                 <p className="text-sm text-stone-500">
                                     Don't have an account?{' '}
-                                    <Link href="/register" className="font-bold text-stone-900 hover:text-stone-600 transition-colors border-b border-stone-900 pb-0.5">Create one</Link>
+                                    <Link href={redirectParam ? `/register?redirect=${encodeURIComponent(redirectParam)}` : '/register'} className="font-bold text-stone-900 hover:text-stone-600 transition-colors border-b border-stone-900 pb-0.5">Create one</Link>
                                 </p>
                             </div>
                         </div>

@@ -71,7 +71,13 @@ export default function ProductCard({ product }) {
   };
 
   return (
-    <Link href={`/product/${id}`} className="group flex flex-col relative cursor-pointer block h-full">
+    <Link
+      href={`/product/${id}`}
+      onClick={() => {
+        if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'instant' });
+      }}
+      className="group flex flex-col relative cursor-pointer block h-full"
+    >
 
       {/* Product Image Section (Premium 3:4 Aspect Ratio) */}
       <div className="relative aspect-[3/4] bg-stone-100 rounded-xl overflow-hidden mb-4 border border-stone-100/50">

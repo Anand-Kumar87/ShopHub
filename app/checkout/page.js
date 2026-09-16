@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { supabase } from '../utils/supabase'; // 🔥 Real Database Connection Added
+import { supabase } from '../utils/supabase'; // 🔥 Real Database Connection
 import {
     FiLock, FiCheck, FiShoppingBag, FiArrowLeft,
     FiCreditCard, FiX, FiGift, FiSmartphone,
@@ -11,13 +12,13 @@ import {
 } from 'react-icons/fi';
 import { useCart } from '../context/CartContext';
 import { useGlobalCurrency } from '../context/CurrencyContext';
+import { mutate } from 'swr';
 import toast from 'react-hot-toast';
 
 export default function CheckoutPage() {
     const router = useRouter();
     const [mounted, setMounted] = useState(false);
 
-    // 🔥 FIX: Added auth checking state to prevent blinking/flashing
     const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
     // Global Cart Context
@@ -38,13 +39,12 @@ export default function CheckoutPage() {
     const [adminSettings, setAdminSettings] = useState({
         enableStripe: true, enableRazorpay: true, enableManualBank: true, razorpayKeyId: ''
     });
-    const [dbSettings, setDbSettings] = useState(null); // 🔥 To hold exact database values
+    const [dbSettings, setDbSettings] = useState(null);
 
     // Form States
     const [formData, setFormData] = useState({
         firstName: '', lastName: '', email: '', phone: '',
-        address: '', city: '', postalCode: '', state: '', country: 'IN', // Default to India
-        // Payment Specific Data
+        address: '', city: '', postalCode: '', state: '', country: 'IN',
         cardNumber: '', expiryDate: '', cvv: '', cardName: '',
         upiId: '',
         bankName: '', accountNumber: '', ifscCode: ''
@@ -61,20 +61,17 @@ export default function CheckoutPage() {
 
     // Modal & Processing States
     const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
-    const [finalOrder, setFinalOrder] = useState(null); // 🔥 FIX: To store exact order details for Success Modal
+    const [finalOrder, setFinalOrder] = useState(null);
     const [isProcessingPayment, setIsProcessingPayment] = useState(false);
     const [paymentError, setPaymentError] = useState('');
 
-    // Hydration, Auth Guard & Database Fetching
     useEffect(() => {
         setMounted(true);
 
         const checkAuthAndFetchSettings = async () => {
             let localUser = JSON.parse(localStorage.getItem('currentUser'));
-            // 🔥 FIX: Get real session from Supabase to prevent Infinite Redirect Loops
             const { data: { session } } = await supabase.auth.getSession();
 
-            // 🔥 FIX: OVERRIDE BUG. If a new session exists but doesn't match local storage, overwrite it!
             if (session) {
                 if (!localUser || localUser.email !== session.user.email) {
                     const userObj = {
@@ -84,22 +81,21 @@ export default function CheckoutPage() {
                         lastName: session.user.user_metadata?.last_name || '',
                     };
                     localStorage.setItem('currentUser', JSON.stringify(userObj));
-                    localUser = userObj; // Update our local variable for the form
-                    window.dispatchEvent(new Event('userStateChange')); // Update Header instantly
+                    localUser = userObj;
+                    window.dispatchEvent(new Event('userStateChange'));
                 }
             }
 
             if (!session && (!localUser || !localUser.email)) {
                 toast.error('Please verify your email to securely place your order.', {
-                    id: 'auth-guard', // Prevents toast spamming
+                    id: 'auth-guard',
                     icon: '🔒',
                     style: { background: '#1c1917', color: '#fff' }
                 });
-                router.replace('/checkout-login?redirect=/checkout'); // Use replace instead of push
+                router.replace('/checkout-login?redirect=/checkout');
                 return;
             }
 
-            // Fill form with correct user data
             setFormData(prev => ({
                 ...prev,
                 email: localUser.email,
@@ -107,9 +103,8 @@ export default function CheckoutPage() {
                 lastName: localUser.lastName || ''
             }));
 
-            setIsCheckingAuth(false); // 🔥 Unlock the UI (Stops the loading screen)
+            setIsCheckingAuth(false);
 
-            // Fetch Admin Gateway Settings from Real Database
             try {
                 const { data: dbData, error } = await supabase.from('admin_settings').select('*').single();
 
@@ -135,7 +130,6 @@ export default function CheckoutPage() {
         checkAuthAndFetchSettings();
     }, [router]);
 
-    // Change default payment method based on country
     useEffect(() => {
         if (formData.country === 'IN' && adminSettings.enableRazorpay) {
             setPaymentMethod('razorpay');
@@ -144,7 +138,16 @@ export default function CheckoutPage() {
         }
     }, [formData.country, adminSettings]);
 
-    // Load Razorpay Script
+    useEffect(() => {
+        if (isSuccessModalOpen) {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => { document.body.style.overflow = 'unset'; };
+    }, [isSuccessModalOpen]);
+
     const loadRazorpayScript = () => {
         return new Promise((resolve) => {
             const script = document.createElement('script');
@@ -155,26 +158,60 @@ export default function CheckoutPage() {
         });
     };
 
-    // --- COUPON LOGIC ---
-    const handleApplyCoupon = () => {
+    const handleApplyCoupon = async () => {
         if (!couponCode.trim()) return;
+        const codeToApply = couponCode.trim().toUpperCase();
 
-        const adminCoupons = JSON.parse(localStorage.getItem('shophub_admin_coupons')) || [
-            { code: 'FESTIVAL20', discount: 20, type: 'percent' },
-            { code: 'FLAT50', discount: 50, type: 'fixed' },
-            { code: 'WELCOME10', discount: 10, type: 'percent' }
-        ];
+        if (codeToApply === 'STUDENT10') {
+            const emailLower = formData.email.toLowerCase();
+            const isStudent = emailLower.endsWith('.edu') || emailLower.endsWith('.ac.in') || emailLower.endsWith('.edu.in');
+            if (!isStudent) {
+                toast.error('STUDENT10 code is exclusively for verified student emails (.edu or .ac.in).', { icon: '🎓' });
+                return;
+            }
+        }
 
-        const validCoupon = adminCoupons.find(c => c.code.toUpperCase() === couponCode.trim().toUpperCase());
+        try {
+            const { data: dbCoupons, error } = await supabase.from('coupons').select('*').eq('code', codeToApply);
+            let validCoupon = dbCoupons?.[0];
 
-        if (validCoupon) {
+            if (!validCoupon) {
+                const adminCoupons = JSON.parse(localStorage.getItem('shophub_admin_coupons')) || [
+                    { code: 'FESTIVAL20', discount: 20, type: 'percent' },
+                    { code: 'FLAT50', discount: 50, type: 'fixed' },
+                    { code: 'WELCOME10', discount: 10, type: 'percent' },
+                    { code: 'STUDENT10', discount: 10, type: 'percent' }
+                ];
+                validCoupon = adminCoupons.find(c => c.code.toUpperCase() === codeToApply);
+            }
+
+            if (!validCoupon) {
+                toast.error('Invalid promo code.');
+                return;
+            }
+
+            if (validCoupon.expires_at) {
+                const expiryDate = new Date(validCoupon.expires_at);
+                if (expiryDate < new Date()) {
+                    toast.error('This promo code has expired.');
+                    return;
+                }
+            }
+
+            const { data: pastOrders } = await supabase.from('orders').select('id').eq('email', formData.email).eq('coupon', codeToApply);
+            if (pastOrders && pastOrders.length > 0) {
+                toast.error('You have already used this promo code. It can only be used once per user.');
+                return;
+            }
+
             setAppliedCoupon(validCoupon);
             toast.success(`Awesome! You unlocked ${validCoupon.type === 'percent' ? `${validCoupon.discount}%` : convertPrice(validCoupon.discount)} off.`);
             setShowCelebration(true);
             setTimeout(() => setShowCelebration(false), 4000);
             setCouponCode('');
-        } else {
-            toast.error('Invalid or expired promo code.');
+
+        } catch (err) {
+            toast.error('Error verifying coupon. Please try again.');
         }
     };
 
@@ -182,39 +219,30 @@ export default function CheckoutPage() {
         setAppliedCoupon(null);
     };
 
-    // --- 🔥 SMART DYNAMIC CALCULATIONS ---
     const rawSubtotal = getTotalPrice ? getTotalPrice() : 0;
-
-    // Convert raw tax value correctly (If admin inputs 5, it means 5%, so 0.05)
     const rawTaxFromDB = dbSettings?.taxRate ?? contextTaxRate ?? 8;
     const actualTaxRate = rawTaxFromDB > 1 ? rawTaxFromDB / 100 : rawTaxFromDB;
     const TAX_RATE = actualTaxRate;
 
-    // Extract exact shipping rates from DB and multiply by currency exchange rate
-    const effectiveFreeShipping = (dbSettings?.freeShippingAmount ?? freeShippingThreshold) * exchangeRate;
-    const effectiveShippingIN = (dbSettings?.shippingIndia ?? shippingIndia) * exchangeRate;
-    const effectiveShippingTier1 = (dbSettings?.shippingTier1 ?? shippingTier1) * exchangeRate;
-    const effectiveShippingRow = (dbSettings?.shippingRow ?? shippingRow) * exchangeRate;
+    const effectiveFreeShipping = dbSettings?.freeShippingAmount ?? freeShippingThreshold;
+    const effectiveShippingIN = dbSettings?.shippingIndia ?? shippingIndia;
+    const effectiveShippingTier1 = dbSettings?.shippingTier1 ?? shippingTier1;
+    const effectiveShippingRow = dbSettings?.shippingRow ?? shippingRow;
 
-    // 🔥 SMART SHIPPING LOGIC BASED ON COUNTRY
     let SHIPPING_COST = 0;
-    const tier1Countries = ['US', 'GB', 'CA', 'AU', 'DE', 'FR', 'IT', 'ES', 'NL']; // Add major EU countries here
+    const tier1Countries = ['US', 'GB', 'CA', 'AU', 'DE', 'FR', 'IT', 'ES', 'NL'];
 
     if (formData.country === 'IN') {
-        // Free shipping ONLY applies to India
         if (rawSubtotal >= effectiveFreeShipping) {
             SHIPPING_COST = 0;
         } else {
             SHIPPING_COST = effectiveShippingIN;
         }
     } else if (tier1Countries.includes(formData.country)) {
-        // Tier 1 rates (No free shipping)
         SHIPPING_COST = effectiveShippingTier1;
     } else if (formData.country) {
-        // Rest of the World (No free shipping)
         SHIPPING_COST = effectiveShippingRow;
     } else {
-        // Fallback if no country selected
         SHIPPING_COST = effectiveShippingIN;
     }
 
@@ -224,7 +252,7 @@ export default function CheckoutPage() {
         if (appliedCoupon.type === 'percent') {
             discountAmount = rawSubtotal * (appliedCoupon.discount / 100);
         } else {
-            discountAmount = appliedCoupon.discount * exchangeRate; // Convert fixed discount to local currency
+            discountAmount = appliedCoupon.discount;
         }
     }
     discountAmount = Math.min(discountAmount, rawSubtotal);
@@ -238,7 +266,7 @@ export default function CheckoutPage() {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    // --- ORDER SUBMISSION & PAYMENT GATEWAY TRIGGERS ---
+    // --- ORDER SUBMISSION ---
     const handlePlaceOrder = async (e) => {
         e.preventDefault();
         setPaymentError('');
@@ -254,20 +282,33 @@ export default function CheckoutPage() {
 
         setIsProcessingPayment(true);
 
-        // Generate Sequential ID
-        const existingOrders = JSON.parse(localStorage.getItem('shophub_orders')) || [];
+        // 🔥 FIX: scan ALL order numbers for the true max, instead of trusting
+        // just the single most-recent-by-created_at row (which breaks if any
+        // order — e.g. one added manually via the DB — has a missing/odd
+        // orderNumber or created_at, causing the sequence to silently reset).
         let nextIdNum = 1;
-        if (existingOrders.length > 0) {
-            const maxId = existingOrders.reduce((max, order) => {
-                const match = String(order.orderNumber || order.id || '').match(/\d+$/);
-                const num = match ? parseInt(match[0], 10) : 0;
-                return num > max ? num : max;
-            }, 0);
-            nextIdNum = maxId + 1;
+        try {
+            const { data: allOrders, error } = await supabase
+                .from('orders')
+                .select('orderNumber')
+                .not('orderNumber', 'is', null);
+
+            let maxNum = 0;
+            (allOrders || []).forEach(o => {
+                const match = String(o.orderNumber).match(/\d+$/);
+                if (match) {
+                    const n = parseInt(match[0], 10);
+                    if (n > maxNum) maxNum = n;
+                }
+            });
+            nextIdNum = maxNum + 1;
+        } catch (dbErr) {
+            console.warn("Could not fetch existing order numbers from database, using fallback.");
+            nextIdNum = Math.floor(10000 + Math.random() * 90000);
         }
+
         const generatedOrderNumber = `ORD-${String(nextIdNum).padStart(5, '0')}`;
 
-        // Extract specific payment details
         const paymentDetails = {
             method: paymentMethod,
             ...(paymentMethod === 'upi' && { upiId: formData.upiId }),
@@ -287,17 +328,27 @@ export default function CheckoutPage() {
             customerName: `${formData.firstName} ${formData.lastName}`.trim(),
             email: formData.email,
             items: cartItems,
-            shipping: {
+
+            shippingAddress: formData.address,
+            city: formData.city,
+            state: formData.state,
+            postalCode: formData.postalCode,
+            country: formData.country,
+
+            shipping_address: {
                 firstName: formData.firstName,
                 lastName: formData.lastName,
                 email: formData.email,
                 phone: formData.phone,
                 address: formData.address,
+                street: formData.address,
                 city: formData.city,
                 state: formData.state,
                 postalCode: formData.postalCode,
+                zipCode: formData.postalCode,
                 country: formData.country,
             },
+            shipping_cost: SHIPPING_COST,
             payment_method: paymentMethod,
             payment_details: paymentDetails,
             coupon: appliedCoupon ? appliedCoupon.code : null,
@@ -313,59 +364,47 @@ export default function CheckoutPage() {
             currency: currency
         };
 
-        // 🔥 FIX: Convert to accurate Local Currency Value for Payment Gateways
         const localFinalTotal = orderTotal * exchangeRate;
 
-        // 🔥 MINIMUM AMOUNT BYPASS (Razorpay requires minimum 1 INR)
         if (localFinalTotal < 1) {
-            toast.success("Order placed successfully! (Minimum amount bypassed)");
             orderPayload.paymentStatus = 'Paid';
-            await executeOrderSave(orderPayload, existingOrders);
+            await executeOrderSave(orderPayload);
             return;
         }
 
         try {
-            // 1. STRIPE FLOW (For Cards)
             if (paymentMethod === 'stripe') {
+                // Save pending order to sessionStorage so it can be restored on Stripe redirect
+                try {
+                    sessionStorage.setItem('pending_stripe_order', JSON.stringify(orderPayload));
+                } catch (e) {
+                    console.warn("Could not save pending order to sessionStorage", e);
+                }
+
                 const res = await fetch('/api/checkout/stripe', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        ...orderPayload,
-                        total_amount: localFinalTotal // Send Converted Amount
-                    })
+                    body: JSON.stringify({ ...orderPayload, total_amount: localFinalTotal })
                 });
                 const data = await res.json();
-
                 if (!res.ok) throw new Error(data.error || "Stripe API error");
-
                 if (data.url) {
                     window.location.href = data.url;
                 } else {
                     throw new Error("Stripe API Route not found. Please setup backend.");
                 }
-            }
-
-            // 2. RAZORPAY FLOW (For UPI / Indian Cards)
-            else if (paymentMethod === 'razorpay') {
+            } else if (paymentMethod === 'razorpay') {
                 const res = await loadRazorpayScript();
                 if (!res) throw new Error("Razorpay SDK failed to load.");
 
                 const apiRes = await fetch('/api/checkout/razorpay', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        ...orderPayload,
-                        total_amount: localFinalTotal // 🔥 Send Converted Amount
-                    })
+                    body: JSON.stringify({ ...orderPayload, total_amount: localFinalTotal })
                 });
 
                 const data = await apiRes.json();
-
-                if (!apiRes.ok) {
-                    throw new Error(data.error || "Backend API Error: Check Razorpay settings.");
-                }
-
+                if (!apiRes.ok) throw new Error(data.error || "Backend API Error: Check Razorpay settings.");
                 if (!data.orderId) throw new Error("Invalid response from Razorpay backend.");
 
                 const options = {
@@ -376,15 +415,36 @@ export default function CheckoutPage() {
                     description: "Premium Order Payment",
                     order_id: data.orderId,
                     handler: async function (response) {
-                        orderPayload.paymentStatus = 'Paid';
-                        orderPayload.razorpay_payment_id = response.razorpay_payment_id;
-                        await executeOrderSave(orderPayload, existingOrders);
+                        try {
+                            setIsProcessingPayment(true);
+                            // 🔥 Cryptographic HMAC SHA256 Verification on Backend
+                            const verifyRes = await fetch('/api/checkout/razorpay/verify', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    razorpay_order_id: response.razorpay_order_id,
+                                    razorpay_payment_id: response.razorpay_payment_id,
+                                    razorpay_signature: response.razorpay_signature,
+                                    orderNumber: orderPayload.orderNumber
+                                })
+                            });
+
+                            const verifyData = await verifyRes.json();
+                            if (!verifyRes.ok || !verifyData.verified) {
+                                throw new Error(verifyData.error || "Payment signature verification failed.");
+                            }
+
+                            orderPayload.paymentStatus = 'Paid';
+                            orderPayload.razorpay_payment_id = response.razorpay_payment_id;
+                            orderPayload.razorpay_order_id = response.razorpay_order_id;
+                            await executeOrderSave(orderPayload);
+                        } catch (verifyErr) {
+                            console.error("Razorpay Verification Error:", verifyErr);
+                            toast.error(verifyErr.message || "Payment verification failed.");
+                            setIsProcessingPayment(false);
+                        }
                     },
-                    prefill: {
-                        name: orderPayload.customerName,
-                        email: orderPayload.email,
-                        contact: formData.phone
-                    },
+                    prefill: { name: orderPayload.customerName, email: orderPayload.email, contact: formData.phone },
                     theme: { color: "#1c1917" }
                 };
 
@@ -394,17 +454,12 @@ export default function CheckoutPage() {
                     setIsProcessingPayment(false);
                 });
                 paymentObject.open();
-            }
-
-            // 3. Cash on Delivery (COD) FLOW
-            else if (paymentMethod === 'cod') {
+            } else if (paymentMethod === 'cod') {
                 orderPayload.paymentStatus = 'Unpaid';
-                setTimeout(async () => await executeOrderSave(orderPayload, existingOrders), 1000);
-            }
-            // 4. MANUAL FLOW (Bank / Direct UPI ID)
-            else {
+                setTimeout(async () => await executeOrderSave(orderPayload), 1000);
+            } else {
                 orderPayload.paymentStatus = 'Unpaid';
-                setTimeout(async () => await executeOrderSave(orderPayload, existingOrders), 1500);
+                setTimeout(async () => await executeOrderSave(orderPayload), 1500);
             }
 
         } catch (error) {
@@ -413,16 +468,14 @@ export default function CheckoutPage() {
             toast.error(error.message);
             setIsProcessingPayment(false);
 
-            // DEV FALLBACK
             if (error.message.includes('API Route not found') || error.message.includes('Unexpected token')) {
                 toast.error("Falling back to manual order.");
                 orderPayload.paymentStatus = 'Unpaid';
-                setTimeout(async () => await executeOrderSave(orderPayload, existingOrders), 1000);
+                setTimeout(async () => await executeOrderSave(orderPayload), 1000);
             }
         }
     };
 
-    // 🔥 MAIN DATABASE SAVE FUNCTION WITH EMAIL
     const executeOrderSave = async (orderPayload) => {
         setFinalOrder(orderPayload);
 
@@ -434,7 +487,8 @@ export default function CheckoutPage() {
                 customerName: orderPayload.customerName,
                 email: orderPayload.email,
                 items: orderPayload.items,
-                shipping: orderPayload.shipping,
+                shipping_address: orderPayload.shipping_address,
+                shipping: orderPayload.shipping_cost,
                 payment_method: orderPayload.payment_method,
                 payment_details: orderPayload.payment_details,
                 paymentStatus: orderPayload.paymentStatus || 'Unpaid',
@@ -452,29 +506,32 @@ export default function CheckoutPage() {
                 console.error("Supabase Save Error Details:", error.message || error);
                 toast.error("Cloud Save Failed. Check DB Columns.");
             } else {
-                toast.success("Order synced to Real Database!");
+                toast.success("Order placed successfully! 🎉", { icon: '✨' });
+                setShowCelebration(true);
+                setTimeout(() => setShowCelebration(false), 5000);
 
-                // 🔥 FIX: Deduct Stock from Real Database automatically after order
+                // 🔥 FIX: tell the account page's cached data (orders count,
+                // rewards, etc.) that it's stale, so it shows the new order
+                // immediately instead of waiting out its 5-minute cache window.
+                mutate('account_data');
+
                 for (const item of orderPayload.items) {
                     const { data: productData } = await supabase.from('products').select('stock').eq('id', item.id).single();
                     if (productData) {
-                        const newStock = Math.max(0, productData.stock - item.quantity); // Ensures stock doesn't go below 0
+                        const newStock = Math.max(0, productData.stock - item.quantity);
                         await supabase.from('products').update({ stock: newStock }).eq('id', item.id);
                     }
                 }
 
-                // 🔥 SEND ACTUAL EMAIL AUTOMATICALLY
                 try {
                     await fetch('/api/email/order-confirmation', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             ...dbPayload,
-                            // 🔥 FIX: ईमेल API को एकदम सही कनवर्टेड और फॉर्मेटेड अमाउंट भेजें 
                             formatted_total: convertPrice(orderPayload.total_amount)
                         })
                     });
-                    console.log("Confirmation Email Sent!");
                 } catch (emailErr) {
                     console.error("Failed to send email", emailErr);
                 }
@@ -483,16 +540,84 @@ export default function CheckoutPage() {
             console.error("Database connection error", dbError);
         }
 
-        // Keep local storage for current session immediate UI updates
-        const existingOrdersList = JSON.parse(localStorage.getItem('shophub_orders')) || [];
-        localStorage.setItem('shophub_orders', JSON.stringify([orderPayload, ...existingOrdersList]));
+        try {
+            const litePayload = { ...orderPayload };
+            if (litePayload.items) {
+                litePayload.items = litePayload.items.map(item => ({
+                    ...item,
+                    images: item.images?.map(img => img?.startsWith('data:') ? '' : img),
+                    image: item.image?.startsWith('data:') ? '' : item.image
+                }));
+            }
+            const existingOrdersList = JSON.parse(localStorage.getItem('shophub_orders')) || [];
+            const newOrdersList = [litePayload, ...existingOrdersList].slice(0, 10);
+            localStorage.setItem('shophub_orders', JSON.stringify(newOrdersList));
+        } catch (storageError) {
+            console.warn("Storage Full. Clearing old local orders.");
+            localStorage.removeItem('shophub_orders');
+        }
 
         setIsProcessingPayment(false);
         if (clearCart) clearCart();
         setIsSuccessModalOpen(true);
     };
 
-    // 🔥 FIX: Changed from Component `<OrderSummary />` to a standard function `renderOrderSummary()`
+    // 🔥 STRIPE REDIRECT RETURN HANDLER
+    const stripeVerifiedRef = useRef(false);
+    useEffect(() => {
+        if (typeof window === 'undefined' || stripeVerifiedRef.current) return;
+
+        const params = new URLSearchParams(window.location.search);
+        const isSuccess = params.get('success') === 'true';
+        const sessionId = params.get('session_id');
+
+        if (isSuccess && sessionId) {
+            stripeVerifiedRef.current = true;
+
+            const verifyStripePayment = async () => {
+                setIsProcessingPayment(true);
+                try {
+                    const res = await fetch('/api/checkout/stripe/verify', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ session_id: sessionId })
+                    });
+                    const data = await res.json();
+                    if (!res.ok || !data.verified) {
+                        throw new Error(data.error || 'Stripe payment verification failed.');
+                    }
+
+                    let pendingOrder = null;
+                    try {
+                        const raw = sessionStorage.getItem('pending_stripe_order');
+                        if (raw) pendingOrder = JSON.parse(raw);
+                    } catch (e) {
+                        console.warn("Could not retrieve pending order from sessionStorage", e);
+                    }
+
+                    if (pendingOrder) {
+                        pendingOrder.paymentStatus = 'Paid';
+                        pendingOrder.stripe_session_id = sessionId;
+                        sessionStorage.removeItem('pending_stripe_order');
+                        await executeOrderSave(pendingOrder);
+                    } else {
+                        toast.success("Stripe payment confirmed! Order processed successfully.");
+                    }
+
+                    // Clean URL query parameters smoothly
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                } catch (err) {
+                    console.error("Stripe Verification Error:", err);
+                    toast.error(err.message || 'Payment verification failed.');
+                } finally {
+                    setIsProcessingPayment(false);
+                }
+            };
+
+            verifyStripePayment();
+        }
+    }, []);
+
     const renderOrderSummary = () => (
         <div className="bg-stone-50 rounded-3xl p-8 border border-stone-100">
             <div className="flex items-center mb-8 border-b border-stone-200 pb-4 gap-3">
@@ -507,7 +632,6 @@ export default function CheckoutPage() {
                     <p className="text-stone-500 text-center py-8 text-sm">Your bag is empty</p>
                 ) : (
                     cartItems.map((item, idx) => {
-                        // Ensure price is a number to prevent NaN calculation errors
                         const itemPrice = typeof item.price === 'string' ? parseFloat(item.price) : item.price;
                         return (
                             <div key={idx} className="flex gap-4 group">
@@ -576,7 +700,6 @@ export default function CheckoutPage() {
                     </div>
                 )}
                 <div className="flex justify-between text-stone-500">
-                    {/* Show Free tag only if India and meets threshold */}
                     <span>Shipping {formData.country === 'IN' && rawSubtotal >= effectiveFreeShipping ? '(Free)' : ''}</span>
                     <span className="font-medium text-stone-900">{SHIPPING_COST === 0 ? 'Free' : convertPrice(SHIPPING_COST)}</span>
                 </div>
@@ -592,7 +715,6 @@ export default function CheckoutPage() {
         </div>
     );
 
-    // 🔥 FIX: Hide checkout form entirely while checking auth to prevent blinking
     if (!mounted || isCheckingAuth) {
         return (
             <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center animate-fade-in">
@@ -674,10 +796,8 @@ export default function CheckoutPage() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12">
                 <form onSubmit={handlePlaceOrder} className="lg:flex lg:gap-12 items-start">
 
-                    {/* Checkout Steps (Left Side) */}
                     <div className="lg:w-2/3 space-y-16">
                         <div className="lg:hidden mb-12">
-                            {/* 🔥 FIX: Called as a function to prevent focus loss */}
                             {renderOrderSummary()}
                         </div>
 
@@ -722,7 +842,6 @@ export default function CheckoutPage() {
                                 </div>
                                 <div>
                                     <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Country *</label>
-                                    {/* 🔥 NEW: Comprehensive Country List */}
                                     <select required name="country" value={formData.country} onChange={handleInputChange} className="w-full px-5 py-3.5 bg-stone-50 border border-transparent rounded-lg focus:outline-none focus:border-stone-900 focus:bg-white transition-colors text-sm appearance-none font-bold">
                                         <option value="">Select a country</option>
                                         <option value="IN">India</option>
@@ -744,8 +863,8 @@ export default function CheckoutPage() {
                                         <option value="SG">Singapore</option>
                                         <option value="JP">Japan</option>
                                         <option value="NZ">New Zealand</option>
-                                        <option value="ZA">New Zealand</option>
-                                        <option value="MX">South Africa</option>
+                                        <option value="ZA">South Africa</option>
+                                        <option value="MX">Mexico</option>
                                         <option value="BR">Brazil</option>
                                         <option value="ROW">Rest of the World</option>
                                     </select>
@@ -753,7 +872,7 @@ export default function CheckoutPage() {
                             </div>
                         </section>
 
-                        {/* Step 2: Payment Gateways API Check */}
+                        {/* Step 2: Payment Gateways */}
                         <section>
                             <div className="flex items-baseline gap-4 mb-8">
                                 <span className="text-sm font-bold text-stone-300 tracking-widest">02</span>
@@ -909,23 +1028,43 @@ export default function CheckoutPage() {
                                         </label>
                                         {paymentMethod === 'bank' && (
                                             <div className="mt-4 ml-7 animate-fade-in space-y-4">
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <div>
-                                                        <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Your Bank Name</label>
-                                                        <input required type="text" name="bankName" value={formData.bankName} onChange={handleInputChange} className="w-full px-4 py-3 bg-white border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900 text-sm" />
+                                                {/* 🔥 यहाँ कस्टमर को एडमिन पैनल वाली असली डिटेल्स दिखेंगी */}
+                                                <div className="text-xs text-stone-600 bg-white p-4 rounded-xl border border-stone-200 space-y-2 shadow-sm">
+                                                    <p className="font-bold text-stone-900 mb-2 border-b border-stone-100 pb-1.5 uppercase tracking-wider text-[10px]">
+                                                        Please transfer funds to the official account below:
+                                                    </p>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-stone-400">Bank Name:</span>
+                                                        <span className="font-bold text-stone-900">{adminSettings.bankName || 'Not Set'}</span>
                                                     </div>
-                                                    <div>
-                                                        <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Account Number</label>
-                                                        <input required type="text" name="accountNumber" value={formData.accountNumber} onChange={handleInputChange} className="w-full px-4 py-3 bg-white border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900 text-sm" />
+                                                    <div className="flex justify-between">
+                                                        <span className="text-stone-400">Account Name:</span>
+                                                        <span className="font-bold text-stone-900">{adminSettings.bankAccountName || 'Not Set'}</span>
                                                     </div>
-                                                    <div className="md:col-span-2">
-                                                        <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">IFSC / Routing Code</label>
-                                                        <input required type="text" name="ifscCode" value={formData.ifscCode} onChange={handleInputChange} className="w-full px-4 py-3 bg-white border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900 text-sm uppercase" />
+                                                    <div className="flex justify-between">
+                                                        <span className="text-stone-400">Account Number:</span>
+                                                        <span className="font-mono font-bold text-stone-900">{adminSettings.bankAccountNumber || 'Not Set'}</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-stone-400">IFSC / SWIFT:</span>
+                                                        <span className="font-mono font-bold text-stone-900 uppercase">{adminSettings.bankIfscCode || 'Not Set'}</span>
                                                     </div>
                                                 </div>
-                                                <div className="text-xs text-stone-500 bg-stone-100 p-3 rounded-lg border border-stone-200">
-                                                    <p className="font-bold text-stone-900 mb-1">Transfer to:</p>
-                                                    ShopHub Inc. | Acc: 00987654321 | Routing: CHASEXXX
+
+                                                {/* यूज़र से उसके बैंक का कन्फर्मेशन लेने के लिए फॉर्म फील्ड्स */}
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                                                    <div>
+                                                        <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Your Bank Name</label>
+                                                        <input required type="text" name="bankName" value={formData.bankName} onChange={handleInputChange} placeholder="e.g. SBI" className="w-full px-4 py-3 bg-white border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900 text-sm" />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Your Account Number</label>
+                                                        <input required type="text" name="accountNumber" value={formData.accountNumber} onChange={handleInputChange} placeholder="Account No." className="w-full px-4 py-3 bg-white border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900 text-sm" />
+                                                    </div>
+                                                    <div className="md:col-span-2">
+                                                        <label className="block text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2">Your IFSC Code</label>
+                                                        <input required type="text" name="ifscCode" value={formData.ifscCode} onChange={handleInputChange} placeholder="IFSC Code" className="w-full px-4 py-3 bg-white border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900 text-sm uppercase" />
+                                                    </div>
                                                 </div>
                                             </div>
                                         )}
@@ -951,7 +1090,7 @@ export default function CheckoutPage() {
                                         />
                                     </div>
                                     <label htmlFor="termsAccepted" className="ml-3 text-sm text-stone-600 leading-relaxed cursor-pointer hover:text-stone-900 transition-colors">
-                                        I accept the <Link href="/terms" className="text-stone-900 underline underline-offset-4">Terms and Conditions</Link> and <Link href="/privacy" className="text-stone-900 underline underline-offset-4">Privacy Policy</Link> *
+                                        I accept the <Link href="/terms" className="text-stone-900 underline underline-offset-4">Terms and Conditions</Link> and <Link href="/privacy-policy" className="text-stone-900 underline underline-offset-4">Privacy Policy</Link> *
                                     </label>
                                 </div>
                                 <div className="flex items-start group">
@@ -986,44 +1125,44 @@ export default function CheckoutPage() {
                     </div>
 
                     <div className="hidden lg:block lg:w-1/3 sticky top-24">
-                        {/* 🔥 FIX: Called as a function to prevent focus loss */}
                         {renderOrderSummary()}
                     </div>
                 </form>
             </div>
 
-            {/* Success Modal (Glassmorphism) */}
-            {isSuccessModalOpen && (
-                <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-md z-[200] flex items-center justify-center p-4 animate-fade-in">
-                    <div className="bg-white rounded-3xl p-10 max-w-md mx-auto text-center transform scale-100 transition-transform shadow-2xl relative border border-stone-100">
-                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-stone-900 mb-6 shadow-xl shadow-stone-900/20">
+            {/* Success Modal (Glassmorphism & Centered Portal) */}
+            {mounted && isSuccessModalOpen && createPortal(
+                <div className="fixed inset-0 bg-stone-900/70 backdrop-blur-md z-[999999] flex items-center justify-center p-4 sm:p-6 overflow-y-auto min-h-screen animate-fade-in">
+                    <div className="bg-white rounded-3xl p-6 sm:p-10 max-w-md w-full mx-auto text-center transform scale-100 transition-transform shadow-2xl relative border border-stone-100 max-h-[90vh] overflow-y-auto my-auto flex flex-col">
+                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-stone-900 mb-6 shadow-xl shadow-stone-900/20 mx-auto flex-shrink-0">
                             <FiCheck className="text-2xl text-white" />
                         </div>
-                        <h2 className="text-3xl font-light text-stone-900 mb-2">Order Confirmed</h2>
-                        <p className="text-stone-500 mb-8 text-sm leading-relaxed">
+                        <h2 className="text-2xl sm:text-3xl font-light text-stone-900 mb-2 flex-shrink-0">Order Confirmed</h2>
+                        <p className="text-stone-500 mb-6 text-sm leading-relaxed flex-shrink-0">
                             {['stripe', 'razorpay'].includes(paymentMethod)
                                 ? "Payment successful. Your curation is currently being processed."
                                 : "Order received. Please complete your manual payment to process the curation."}
                             <br /><br />A confirmation has been sent to your email.
                         </p>
 
-                        <div className="bg-stone-50 border border-stone-100 p-6 rounded-2xl text-left mb-10">
+                        <div className="bg-stone-50 border border-stone-100 p-5 rounded-2xl text-left mb-8 flex-shrink-0">
                             <p className="text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-1">Order Number</p>
-                            <p className="font-serif italic font-bold text-lg text-stone-900 mb-4">{finalOrder?.orderNumber}</p>
+                            <p className="font-serif italic font-bold text-lg text-stone-900 mb-3">{finalOrder?.orderNumber}</p>
                             <p className="text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-1">Total Paid</p>
                             <p className="text-sm font-bold text-stone-900">{convertPrice(finalOrder?.total_amount || 0)}</p>
                         </div>
 
-                        <div className="flex flex-col gap-3">
-                            <Link href={`/account?tab=orders`} className="w-full bg-stone-900 text-white text-xs font-bold tracking-widest uppercase px-8 py-4 rounded-full hover:bg-stone-800 transition-colors shadow-lg shadow-stone-900/10 text-center flex items-center justify-center">
+                        <div className="flex flex-col gap-3 flex-shrink-0">
+                            <Link href={`/account?tab=orders`} onClick={() => { document.body.style.overflow = 'unset'; }} className="w-full bg-stone-900 text-white text-xs font-bold tracking-widest uppercase px-8 py-4 rounded-full hover:bg-stone-800 transition-colors shadow-lg shadow-stone-900/10 text-center flex items-center justify-center">
                                 View in Account
                             </Link>
-                            <Link href="/" className="w-full bg-white text-stone-900 border border-stone-200 text-xs font-bold tracking-widest uppercase px-8 py-4 rounded-full hover:bg-stone-50 transition-colors text-center flex items-center justify-center">
+                            <Link href="/" onClick={() => { document.body.style.overflow = 'unset'; }} className="w-full bg-white text-stone-900 border border-stone-200 text-xs font-bold tracking-widest uppercase px-8 py-4 rounded-full hover:bg-stone-50 transition-colors text-center flex items-center justify-center">
                                 Return Home
                             </Link>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </main>
     );

@@ -73,8 +73,10 @@ export default function CartDropdown() {
                 // 🔥 Fix: Ensure price is treated as a number
                 const safeItemPrice = typeof item.price === 'string' ? parseFloat(item.price) : item.price;
 
+                const itemKey = item.cartKey || item.id;
+
                 return (
-                  <li key={item.id} className="p-6 transition-colors hover:bg-stone-50/50 group flex gap-5">
+                  <li key={itemKey} className="p-6 transition-colors hover:bg-stone-50/50 group flex gap-5">
 
                     {/* Product Image (Premium 3:4 Ratio) */}
                     <div className="flex-shrink-0 w-24 aspect-[3/4] bg-stone-100 rounded-lg overflow-hidden relative border border-stone-200/60">
@@ -100,7 +102,7 @@ export default function CartDropdown() {
                           {item.name}
                         </h3>
                         <button
-                          onClick={() => removeFromCart(item.id)}
+                          onClick={() => removeFromCart(itemKey)}
                           className="text-stone-400 hover:text-red-500 transition-colors p-1"
                           aria-label="Remove item"
                         >
@@ -108,15 +110,22 @@ export default function CartDropdown() {
                         </button>
                       </div>
 
-                      <p className="text-xs font-bold tracking-widest text-stone-500 uppercase mb-auto">
-                        {item.category || 'Collection'}
-                      </p>
+                      <div className="flex flex-wrap items-center gap-2 mb-auto">
+                        <span className="text-[10px] font-bold tracking-widest text-stone-500 uppercase">
+                          {item.category || 'Collection'}
+                        </span>
+                        {(item.size || item.color) && (
+                          <span className="text-[10px] text-stone-400 bg-stone-100 px-2 py-0.5 rounded-full font-medium">
+                            {item.size ? `Size: ${item.size}` : ''} {item.size && item.color ? '•' : ''} {item.color ? `${item.color}` : ''}
+                          </span>
+                        )}
+                      </div>
 
                       <div className="flex items-center justify-between mt-4">
                         {/* Premium Pill Quantity Control */}
                         <div className="flex items-center border border-stone-200 rounded-full bg-white h-9">
                           <button
-                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                            onClick={() => updateQuantity(itemKey, item.quantity - 1)}
                             className="w-8 h-full flex items-center justify-center text-stone-500 hover:text-stone-900 transition-colors disabled:opacity-30"
                             disabled={item.quantity <= 1}
                           >
@@ -126,7 +135,7 @@ export default function CartDropdown() {
                             {item.quantity}
                           </span>
                           <button
-                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                            onClick={() => updateQuantity(itemKey, item.quantity + 1)}
                             className="w-8 h-full flex items-center justify-center text-stone-500 hover:text-stone-900 transition-colors"
                           >
                             <FiPlus size={12} />

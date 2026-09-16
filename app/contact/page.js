@@ -190,7 +190,7 @@ export default function ContactPage() {
                                     <FiCheck className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white text-xs opacity-0 peer-checked:opacity-100 pointer-events-none" />
                                 </div>
                                 <label htmlFor="consentGiven" className="ml-3 block text-sm text-stone-500 leading-relaxed cursor-pointer hover:text-stone-900 transition-colors">
-                                    I agree to the <Link href="/privacy" className="text-stone-900 underline underline-offset-4">Privacy Policy</Link> and consent to ShopHub processing my personal data to handle my inquiry.
+                                    I agree to the <Link href="/privacy-policy" className="text-stone-900 underline underline-offset-4">Privacy Policy</Link> and consent to ShopHub processing my personal data to handle my inquiry.
                                 </label>
                             </div>
 

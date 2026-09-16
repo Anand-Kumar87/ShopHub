@@ -51,11 +51,11 @@ export default function ShippingPage() {
 
     if (!mounted) return null;
 
-    // Smart Calculations based on DB or Defaults
-    const effectiveFreeShipping = (dbSettings?.freeShippingAmount ?? freeShippingThreshold) * exchangeRate;
-    const effectiveShippingIN = (dbSettings?.shippingIndia ?? shippingIndia) * exchangeRate;
-    const effectiveShippingTier1 = (dbSettings?.shippingTier1 ?? shippingTier1) * exchangeRate;
-    const effectiveShippingRow = (dbSettings?.shippingRow ?? shippingRow) * exchangeRate;
+    // Smart Calculations based on DB or Defaults (in Base INR)
+    const effectiveFreeShipping = dbSettings?.freeShippingAmount ?? freeShippingThreshold;
+    const effectiveShippingIN = dbSettings?.shippingIndia ?? shippingIndia;
+    const effectiveShippingTier1 = dbSettings?.shippingTier1 ?? shippingTier1;
+    const effectiveShippingRow = dbSettings?.shippingRow ?? shippingRow;
 
     return (
         <main className="bg-white min-h-screen animate-fade-in pb-24">

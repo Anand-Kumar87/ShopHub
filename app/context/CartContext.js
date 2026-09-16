@@ -40,35 +40,39 @@ export function CartProvider({ children }) {
   // Cart Actions
   const addToCart = (product, quantity = 1) => {
     setCartItems(prevItems => {
-      const existingItemIndex = prevItems.findIndex(item => item.id === product.id);
+      const sanitizedQty = Math.min(Math.max(1, parseInt(quantity) || 1), 20);
+      const variantKey = `${product.id}_${product.size || 'default'}_${product.color || 'default'}`;
+      const existingItemIndex = prevItems.findIndex(item => (item.cartKey || item.id) === variantKey);
 
       // Handle database price structure (salePrice vs regular price)
       const actualPrice = product.onSale && product.salePrice ? product.salePrice : product.price;
 
       if (existingItemIndex > -1) {
         const updatedItems = [...prevItems];
+        const newQty = Math.min(updatedItems[existingItemIndex].quantity + sanitizedQty, 50);
         updatedItems[existingItemIndex] = {
           ...updatedItems[existingItemIndex],
-          quantity: updatedItems[existingItemIndex].quantity + quantity
+          quantity: newQty
         };
         return updatedItems;
       } else {
         // 🔥 OPTIMIZATION: Only save essential data to prevent 5MB localStorage limit
         const optimizedProduct = {
           id: product.id,
+          cartKey: variantKey,
           name: product.name,
           price: actualPrice,
           originalPrice: product.price,
           salePrice: product.salePrice,
           onSale: product.onSale,
           slug: product.slug,
-          size: product.size,
-          color: product.color,
+          size: product.size || null,
+          color: product.color || null,
           // Extract only the first image if it's an array to save huge amounts of space
           images: Array.isArray(product.images) && product.images.length > 0 ? [product.images[0]] : product.images,
           image: product.image,
           category: product.category,
-          quantity: quantity
+          quantity: sanitizedQty
         };
 
         return [...prevItems, optimizedProduct];
@@ -79,11 +83,13 @@ export function CartProvider({ children }) {
     setIsCartOpen(true);
   };
 
-  const removeFromCart = (productId) => setCartItems(prevItems => prevItems.filter(item => item.id !== productId));
+  const removeFromCart = (itemIdentifier) => {
+    setCartItems(prevItems => prevItems.filter(item => (item.cartKey || item.id) !== itemIdentifier));
+  };
 
-  const updateQuantity = (productId, quantity) => {
-    if (quantity < 1) return;
-    setCartItems(prevItems => prevItems.map(item => item.id === productId ? { ...item, quantity } : item));
+  const updateQuantity = (itemIdentifier, quantity) => {
+    if (quantity < 1 || quantity > 50) return;
+    setCartItems(prevItems => prevItems.map(item => (item.cartKey || item.id) === itemIdentifier ? { ...item, quantity } : item));
   };
 
   const clearCart = () => setCartItems([]);

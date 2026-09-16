@@ -1,123 +1,179 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { supabase } from '../utils/supabase';
 
-const AuthContext = createContext();
+const AuthContext = createContext(undefined);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+    const [user, setUser] = useState(null);
+    const [profile, setProfile] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-  // Check auth status on component mount
-  useEffect(() => {
-    const checkAuthStatus = () => {
-      // Humne pichle components mein 'shophub_current_user' key use ki thi
-      const storedUser = localStorage.getItem('shophub_current_user');
-
-      if (storedUser) {
-        try {
-          setUser(JSON.parse(storedUser));
-        } catch (error) {
-          console.error('Failed to parse user from localStorage:', error);
-          setUser(null);
+    // Synchronize authenticated user profile from Supabase
+    const syncUserProfile = useCallback(async (sessionUser) => {
+        if (!sessionUser) {
+            setUser(null);
+            setProfile(null);
+            if (typeof window !== 'undefined') {
+                localStorage.removeItem('currentUser');
+                window.dispatchEvent(new Event('userStateChange'));
+            }
+            return null;
         }
-      }
-      setLoading(false);
+
+        try {
+            const { data: dbProfile } = await supabase
+                .from('profiles')
+                .select('id, first_name, last_name, email, role, avatar_url')
+                .eq('id', sessionUser.id)
+                .maybeSingle();
+
+            let profileData = dbProfile;
+
+            // Auto-provision profile in 'profiles' table for first-time social login
+            if (!dbProfile) {
+                const fullName = sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || '';
+                const nameParts = fullName.trim().split(/\s+/);
+                const firstName = nameParts[0] || sessionUser.email?.split('@')[0] || 'User';
+                const lastName = nameParts.slice(1).join(' ') || '';
+                const avatarUrl = sessionUser.user_metadata?.avatar_url || sessionUser.user_metadata?.picture || '';
+
+                profileData = {
+                    id: sessionUser.id,
+                    email: sessionUser.email,
+                    first_name: firstName,
+                    last_name: lastName,
+                    role: 'customer',
+                    avatar_url: avatarUrl
+                };
+
+                await supabase.from('profiles').insert([
+                    {
+                        ...profileData,
+                        created_at: new Date().toISOString()
+                    }
+                ]);
+            }
+
+            const verifiedUser = {
+                id: sessionUser.id,
+                email: sessionUser.email,
+                firstName: profileData.first_name || sessionUser.email?.split('@')[0] || 'User',
+                lastName: profileData.last_name || '',
+                role: (profileData.role || 'customer').toLowerCase(),
+                image: profileData.avatar_url || ''
+            };
+
+            setUser(sessionUser);
+            setProfile(verifiedUser);
+
+            if (typeof window !== 'undefined') {
+                localStorage.setItem('currentUser', JSON.stringify(verifiedUser));
+                window.dispatchEvent(new Event('userStateChange'));
+            }
+
+            return verifiedUser;
+        } catch (err) {
+            console.error('Failed to sync user profile:', err);
+            return null;
+        }
+    }, []);
+
+    // Initial session check on mount & auth event listener
+    useEffect(() => {
+        let isMounted = true;
+
+        async function initAuth() {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (isMounted) {
+                    if (session?.user) {
+                        await syncUserProfile(session.user);
+                    } else {
+                        // Purge any stale ghost sessions in localStorage
+                        if (typeof window !== 'undefined' && localStorage.getItem('currentUser')) {
+                            localStorage.removeItem('currentUser');
+                            window.dispatchEvent(new Event('userStateChange'));
+                        }
+                        setUser(null);
+                        setProfile(null);
+                    }
+                }
+            } catch (error) {
+                console.error('Auth initialization error:', error);
+            } finally {
+                if (isMounted) setLoading(false);
+            }
+        }
+
+        initAuth();
+
+        // Real-time listener for sign-in, token refresh, and sign-out
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (event === 'SIGNED_OUT' || !session?.user) {
+                if (isMounted) {
+                    setUser(null);
+                    setProfile(null);
+                    if (typeof window !== 'undefined') {
+                        localStorage.removeItem('currentUser');
+                        localStorage.removeItem('shophub_db_orders');
+                        window.dispatchEvent(new Event('userStateChange'));
+                    }
+                }
+            } else if (session?.user) {
+                if (isMounted) {
+                    await syncUserProfile(session.user);
+                }
+            }
+        });
+
+        return () => {
+            isMounted = false;
+            subscription?.unsubscribe();
+        };
+    }, [syncUserProfile]);
+
+    // Secure Sign Out
+    const signOut = async () => {
+        try {
+            await supabase.auth.signOut();
+        } catch {
+            // Proceed with local cleanup regardless of network error
+        } finally {
+            setUser(null);
+            setProfile(null);
+            if (typeof window !== 'undefined') {
+                localStorage.removeItem('currentUser');
+                localStorage.removeItem('shophub_db_orders');
+                sessionStorage.clear();
+                window.dispatchEvent(new Event('userStateChange'));
+            }
+        }
     };
 
-    checkAuthStatus();
-  }, []);
+    const isAdmin = profile?.role === 'admin';
+    const isAuthenticated = !!user;
 
-  // Login function
-  const login = async (email, password, rememberMe = false) => {
-    try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      let role = 'customer';
-      let name = email.split('@')[0];
-
-      // Admin check logic
-      if (email === 'admin@shophub.com' || email === 'demo@example.com') {
-        role = 'admin';
-        name = email === 'admin@shophub.com' ? 'Admin User' : 'Demo Admin';
-      }
-
-      const mockUser = {
-        id: Math.random().toString(36).substr(2, 9),
-        name,
-        email,
-        role,
-        avatarUrl: `https://ui-avatars.com/api/?name=${name}&background=0D8ABC&color=fff`,
-      };
-
-      // Save to state and localStorage
-      setUser(mockUser);
-
-      if (rememberMe) {
-        localStorage.setItem('shophub_current_user', JSON.stringify(mockUser));
-      } else {
-        sessionStorage.setItem('shophub_current_user', JSON.stringify(mockUser));
-      }
-
-      return { success: true, user: mockUser };
-    } catch (error) {
-      console.error('Login failed:', error);
-      return { success: false, error: 'Invalid login credentials' };
-    }
-  };
-
-  // Register function
-  const register = async (firstName, lastName, email, password) => {
-    try {
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      const mockUser = {
-        id: Math.random().toString(36).substr(2, 9),
-        firstName,
-        lastName,
-        name: `${firstName} ${lastName}`,
-        email,
-        role: 'customer',
-        avatarUrl: `https://ui-avatars.com/api/?name=${firstName}+${lastName}&background=0D8ABC&color=fff`,
-      };
-
-      setUser(mockUser);
-      localStorage.setItem('shophub_current_user', JSON.stringify(mockUser));
-
-      return { success: true, user: mockUser };
-    } catch (error) {
-      console.error('Registration failed:', error);
-      return { success: false, error: 'Registration failed' };
-    }
-  };
-
-  // Logout function
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('shophub_current_user');
-    sessionStorage.removeItem('shophub_current_user');
-  };
-
-  return (
-    <AuthContext.Provider value={{
-      user,
-      loading,
-      login,
-      register,
-      logout,
-      isAuthenticated: !!user,
-      isAdmin: user?.role === 'admin'
-    }}>
-      {children}
-    </AuthContext.Provider>
-  );
+    return (
+        <AuthContext.Provider value={{
+            user,
+            profile,
+            loading,
+            isAuthenticated,
+            isAdmin,
+            signOut,
+            refreshUser: () => syncUserProfile(user)
+        }}>
+            {children}
+        </AuthContext.Provider>
+    );
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+    const context = useContext(AuthContext);
+    if (context === undefined) {
+        throw new Error('useAuth must be used within an AuthProvider');
+    }
+    return context;
 }

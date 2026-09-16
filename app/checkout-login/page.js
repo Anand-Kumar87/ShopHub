@@ -44,7 +44,7 @@ export default function CheckoutLoginPage() {
             const { error } = await supabase.auth.signInWithOtp({
                 email: email,
                 options: {
-                    emailRedirectTo: `${window.location.origin}${redirectTo}`,
+                    emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`,
                 }
             });
 
@@ -145,7 +145,7 @@ export default function CheckoutLoginPage() {
 
                             <div className="text-center mt-6 pt-6 border-t border-stone-100">
                                 <p className="text-xs text-stone-500 mb-2">Want to use password or social login?</p>
-                                <Link href="/login" className="text-xs font-bold text-stone-900 hover:text-stone-500 transition-colors uppercase tracking-widest">
+                                <Link href={`/login?redirect=${encodeURIComponent(redirectTo)}`} className="text-xs font-bold text-stone-900 hover:text-stone-500 transition-colors uppercase tracking-widest">
                                     Go to Standard Login
                                 </Link>
                             </div>

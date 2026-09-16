@@ -2,25 +2,22 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { FiCheck, FiAlertCircle, FiArrowLeft } from 'react-icons/fi';
+import { FiCheck, FiAlertCircle, FiArrowLeft, FiMail, FiArrowRight } from 'react-icons/fi';
 
 export default function ForgotPasswordPage() {
     const [email, setEmail] = useState('');
     const [status, setStatus] = useState('idle'); // 'idle', 'loading', 'success', 'error'
     const [errorMessage, setErrorMessage] = useState('');
+    const [cooldown, setCooldown] = useState(0);
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        if (e) e.preventDefault();
         setErrorMessage('');
 
-        // Basic validation
-        if (!email) {
-            setErrorMessage('Please enter your email address');
-            setStatus('error');
-            return;
-        }
+        const normalizedEmail = (email || '').trim().toLowerCase();
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-        if (!/\S+@\S+\.\S+/.test(email)) {
+        if (!normalizedEmail || !emailRegex.test(normalizedEmail)) {
             setErrorMessage('Please enter a valid email address');
             setStatus('error');
             return;
@@ -29,35 +26,45 @@ export default function ForgotPasswordPage() {
         setStatus('loading');
 
         try {
-            // API call simulation (Replace with actual backend endpoint later)
-            const resetToken = Math.random().toString(36).substring(2, 15);
-            const resetUrl = `${window.location.origin}/reset-password?token=${resetToken}`;
-
-            // Simulating a network request delay
-            await new Promise(resolve => setTimeout(resolve, 1500));
-
-            /* 
-            // Real API Call Implementation (Uncomment when backend is ready)
-            const response = await fetch('/api/send-reset-email', {
+            const response = await fetch('/api/auth/forgot-password', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({ email, resetUrl })
+                body: JSON.stringify({ email: normalizedEmail })
             });
 
+            const data = await response.json();
+
             if (!response.ok) {
-                throw new Error('Failed to send reset email');
+                throw new Error(data.error || 'Failed to send password reset email. Please try again.');
             }
-            */
 
             setStatus('success');
+
+            // Start 60s cooldown for resend button
+            setCooldown(60);
+            const interval = setInterval(() => {
+                setCooldown(prev => {
+                    if (prev <= 1) {
+                        clearInterval(interval);
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+
         } catch (error) {
-            console.error('Error:', error);
-            setErrorMessage('Failed to send reset email. Please try again.');
+            console.error('Password reset dispatch error:', error);
+            setErrorMessage(error.message || 'Unable to connect to the reset service. Please try again later.');
             setStatus('error');
         }
+    };
+
+    const handleResend = () => {
+        if (cooldown > 0) return;
+        handleSubmit(null);
     };
 
     const handleRequestNewLink = () => {
@@ -86,27 +93,38 @@ export default function ForgotPasswordPage() {
                     {status !== 'success' ? (
                         <div className={`animate-fade-in ${status === 'error' ? 'animate-[shake_0.5s_ease-in-out]' : ''}`}>
                             <p className="text-stone-500 mb-8 text-sm text-center leading-relaxed">
-                                Enter the email address associated with your account, and we will send you a secure link to reset your password.
+                                Enter the email address associated with your account, and our concierge will send a verified link and recovery code to reset your password.
                             </p>
 
                             <form onSubmit={handleSubmit}>
                                 <div className="mb-6">
-                                    <label htmlFor="email" className="block text-xs font-bold tracking-widest uppercase text-stone-900 mb-2">Email Address</label>
-                                    <input
-                                        type="email"
-                                        id="email"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        disabled={status === 'loading'}
-                                        className={`w-full px-5 py-3.5 bg-stone-50 border rounded-lg focus:outline-none transition-colors text-sm ${status === 'error'
-                                                ? 'border-red-400 focus:border-red-500 bg-red-50/10'
-                                                : 'border-transparent focus:border-stone-900 focus:bg-white'
-                                            }`}
-                                        placeholder="Enter your email"
-                                    />
+                                    <label htmlFor="email" className="block text-xs font-bold tracking-widest uppercase text-stone-900 mb-2">
+                                        Email Address
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="email"
+                                            id="email"
+                                            value={email}
+                                            onChange={(e) => {
+                                                setEmail(e.target.value);
+                                                if (status === 'error') {
+                                                    setStatus('idle');
+                                                    setErrorMessage('');
+                                                }
+                                            }}
+                                            disabled={status === 'loading'}
+                                            className={`w-full px-5 py-3.5 bg-stone-50 border rounded-lg focus:outline-none transition-colors text-sm ${status === 'error'
+                                                    ? 'border-red-400 focus:border-red-500 bg-red-50/10'
+                                                    : 'border-transparent focus:border-stone-900 focus:bg-white'
+                                                }`}
+                                            placeholder="Enter your registered email"
+                                            required
+                                        />
+                                    </div>
                                     {status === 'error' && (
-                                        <div className="mt-3 text-red-500 text-xs font-medium flex items-center gap-1.5">
-                                            <FiAlertCircle size={14} /> {errorMessage}
+                                        <div className="mt-3 text-red-500 text-xs font-medium flex items-center gap-1.5 animate-fade-in">
+                                            <FiAlertCircle size={14} className="shrink-0" /> {errorMessage}
                                         </div>
                                     )}
                                 </div>
@@ -114,7 +132,7 @@ export default function ForgotPasswordPage() {
                                 <button
                                     type="submit"
                                     disabled={status === 'loading'}
-                                    className="w-full bg-stone-900 hover:bg-stone-800 text-white font-bold tracking-widest uppercase text-xs py-4 rounded-full transition-colors flex justify-center items-center disabled:opacity-70 shadow-lg shadow-stone-900/20 mb-8"
+                                    className="w-full bg-stone-900 hover:bg-stone-800 text-white font-bold tracking-widest uppercase text-xs py-4 rounded-full transition-all flex justify-center items-center disabled:opacity-70 shadow-lg shadow-stone-900/20 mb-8 active:scale-[0.99]"
                                 >
                                     {status === 'loading' ? (
                                         <>
@@ -122,7 +140,7 @@ export default function ForgotPasswordPage() {
                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                             </svg>
-                                            Sending Link...
+                                            Sending Secure Email...
                                         </>
                                     ) : (
                                         'Send Reset Link'
@@ -132,34 +150,45 @@ export default function ForgotPasswordPage() {
                         </div>
                     ) : (
                         /* Success State */
-                        <div className="bg-stone-50 border border-stone-100 rounded-3xl p-10 text-center animate-fade-in mt-4">
-                            <div className="inline-flex justify-center items-center w-16 h-16 bg-stone-900 rounded-full mb-6 shadow-xl shadow-stone-900/20">
-                                <FiCheck className="text-3xl text-white" />
+                        <div className="bg-stone-50 border border-stone-100 rounded-3xl p-10 text-center animate-fade-in mt-4 shadow-xl shadow-stone-200/50">
+                            <div className="inline-flex justify-center items-center w-16 h-16 bg-stone-900 rounded-full mb-6 shadow-xl shadow-stone-900/20 text-white">
+                                <FiMail size={26} />
                             </div>
-                            <h3 className="text-2xl font-light text-stone-900 mb-2">Check Your Email</h3>
+                            <h3 className="text-2xl font-serif font-light text-stone-900 mb-2">Check Your Email</h3>
                             <p className="text-stone-500 mb-8 text-sm leading-relaxed">
-                                We've sent password reset instructions to:<br />
+                                We've dispatched password reset instructions to:<br />
                                 <span className="font-bold text-stone-900 block mt-1">{email}</span>
                             </p>
 
-                            <div className="text-left bg-white border border-stone-100 p-6 rounded-2xl mb-8">
+                            <div className="text-left bg-white border border-stone-100 p-6 rounded-2xl mb-8 shadow-sm">
                                 <h4 className="text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-4">Next Steps</h4>
                                 <ul className="text-sm text-stone-600 space-y-3">
                                     <li className="flex items-start gap-3">
-                                        <span className="text-stone-300 font-bold">01</span> Check your email inbox.
+                                        <span className="text-stone-300 font-bold">01</span> Check your email inbox (and Spam/Updates folder).
                                     </li>
                                     <li className="flex items-start gap-3">
-                                        <span className="text-stone-300 font-bold">02</span> Look for an email from ShopHub.
+                                        <span className="text-stone-300 font-bold">02</span> Open the email from <strong>ShopHub Concierge</strong>.
                                     </li>
                                     <li className="flex items-start gap-3">
-                                        <span className="text-stone-300 font-bold">03</span> Click the secure reset link.
+                                        <span className="text-stone-300 font-bold">03</span> Click the <strong>Reset Password</strong> button or use your recovery code.
                                     </li>
                                 </ul>
                             </div>
 
                             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-xs font-bold tracking-widest uppercase">
-                                <button onClick={handleRequestNewLink} className="text-stone-400 hover:text-stone-900 transition-colors">
-                                    Resend Link
+                                <button
+                                    onClick={handleResend}
+                                    disabled={cooldown > 0}
+                                    className="text-stone-900 hover:text-stone-600 transition-colors disabled:opacity-40 disabled:hover:text-stone-900"
+                                >
+                                    {cooldown > 0 ? `Resend Available in ${cooldown}s` : 'Resend Email'}
+                                </button>
+                                <span className="text-stone-300 hidden sm:inline">&bull;</span>
+                                <button
+                                    onClick={handleRequestNewLink}
+                                    className="text-stone-400 hover:text-stone-900 transition-colors"
+                                >
+                                    Try Different Email
                                 </button>
                             </div>
                         </div>

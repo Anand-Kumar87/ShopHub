@@ -28,6 +28,10 @@ export async function GET() {
         }
     ];
 
-    // Notice: Humne yahan "export async function GET" use kiya hai, "export default" nahi.
-    return NextResponse.json(faqs, { status: 200 });
+    return NextResponse.json(faqs, {
+        status: 200,
+        headers: {
+            'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400'
+        }
+    });
 }

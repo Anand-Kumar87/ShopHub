@@ -4,7 +4,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 import { FiSearch, FiUser, FiShoppingCart, FiHeart, FiMenu, FiX, FiBox, FiLogOut, FiArrowRight } from 'react-icons/fi';
-import { motion, AnimatePresence } from 'framer-motion'; // 🔥 IMPORTED FRAMER MOTION
+import { motion, AnimatePresence } from 'framer-motion'; // 櫨 IMPORTED FRAMER MOTION
+
+// 🔥 NEW IMPORTS FOR PROPER SIGNOUT
+import { supabase } from '../utils/supabase';
+import toast from 'react-hot-toast';
 
 // Components 
 import SearchBar from './common/SearchBar';
@@ -15,6 +19,7 @@ import CartDropdown from './cart/CartDropdown';
 // Global Contexts 
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function Header() {
   const router = useRouter();
@@ -22,34 +27,29 @@ export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
-  // 🔥 NEW: State to control Mega Menu visibility
+  // 櫨 NEW: State to control Mega Menu visibility
   const [isMegaMenuOpen, setIsMegaMenuOpen] = useState(false);
   let timeoutId = useRef(null); // To add a slight delay for smooth hover experience
 
   // 1. Context Hooks (with safety fallbacks)
   const { getTotalItems, openCart, isCartOpen } = useCart() || { getTotalItems: () => 0, openCart: () => { }, isCartOpen: false };
   const { wishlistCount } = useWishlist() || { wishlistCount: 0 };
+  const { profile: authProfile, isAuthenticated, signOut: authSignOut } = useAuth() || {};
 
   // 2. Auth & Dropdown States
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
+  const currentUser = isAuthenticated ? authProfile : null;
   const dropdownRef = useRef(null);
   const headerRef = useRef(null);
 
   const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
   const toggleSearch = () => setSearchOpen(!searchOpen);
 
-  // 3. Effects for Scroll, Auth Sync, and Click Outside
+  // 3. Effects for Scroll and Click Outside
   useEffect(() => {
     // Scroll Effect
     const handleScroll = () => {
       setScrolled(window.scrollY > 50);
-    };
-
-    // Check User Logic
-    const checkUser = () => {
-      const userStr = localStorage.getItem('currentUser');
-      setCurrentUser(userStr ? JSON.parse(userStr) : null);
     };
 
     // Click outside to close user dropdown
@@ -59,31 +59,41 @@ export default function Header() {
       }
     };
 
-    // Initial checks and Event Listeners
-    checkUser();
     window.addEventListener('scroll', handleScroll);
-    window.addEventListener('storage', checkUser);
-    window.addEventListener('userStateChange', checkUser);
     document.addEventListener('mousedown', handleClickOutside);
 
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('storage', checkUser);
-      window.removeEventListener('userStateChange', checkUser);
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
 
-  // 4. Sign Out Handler
-  const handleSignOut = () => {
-    localStorage.removeItem('currentUser');
-    setCurrentUser(null);
-    setIsUserDropdownOpen(false);
-    window.dispatchEvent(new Event('userStateChange'));
-    router.push('/');
+  // 🔥 4. SECURE SIGN OUT HANDLER (FIXED GHOST SESSION)
+  const handleSignOut = async () => {
+    try {
+      if (authSignOut) {
+        await authSignOut();
+      } else {
+        await supabase.auth.signOut();
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('shophub_db_orders');
+        localStorage.removeItem('shophub_current_user');
+        sessionStorage.clear();
+      }
+
+      setIsUserDropdownOpen(false);
+      toast.success("Signed out securely.");
+
+      // Hard redirect and refresh
+      window.location.assign('/');
+
+    } catch (error) {
+      console.error("Sign out error:", error);
+      toast.error("Failed to sign out properly.");
+    }
   };
 
-  // 🔥 HANDLERS FOR MEGA MENU HOVER
+  // 櫨 HANDLERS FOR MEGA MENU HOVER
   const handleMouseEnterMegaMenu = () => {
     clearTimeout(timeoutId.current);
     setIsMegaMenuOpen(true);
@@ -117,7 +127,7 @@ export default function Header() {
               <Link href="/shop?filter=new-arrivals" className="text-xs font-bold tracking-widest uppercase text-stone-500 hover:text-stone-900 transition-colors duration-300 py-2">New In</Link>
               <Link href="/shop" className="text-xs font-bold tracking-widest uppercase text-stone-500 hover:text-stone-900 transition-colors duration-300 py-2">Shop</Link>
 
-              {/* 🔥 COLLECTIONS LINK WITH MEGA MENU TRIGGER */}
+              {/* 櫨 COLLECTIONS LINK WITH MEGA MENU TRIGGER */}
               <div
                 className="h-full flex items-center py-2"
                 onMouseEnter={handleMouseEnterMegaMenu}
@@ -140,7 +150,7 @@ export default function Header() {
 
               {/* --- Currency Selector Added Here --- */}
               <div className="hidden sm:block mr-2">
-                <CurrencySelector />
+                <CurrencySelector align="right" />
               </div>
 
               {/* Search */}
@@ -153,16 +163,16 @@ export default function Header() {
                 <FiSearch className="w-5 h-5" />
               </button>
 
-              {/* Wishlist Button with Premium Dark Badge */}
+              {/* Wishlist Button with Premium Badge (Visible on Mobile & Desktop) */}
               <Link
                 href="/wishlist"
-                className="relative p-2.5 text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-full transition-all duration-300 hidden sm:flex"
-                aria-label="Wishlist"
+                className="relative p-2.5 text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-full transition-all duration-300 flex items-center justify-center"
+                aria-label={`Wishlist (${wishlistCount || 0} items)`}
               >
-                <FiHeart className="w-5 h-5" />
+                <FiHeart className={`w-5 h-5 transition-colors ${wishlistCount > 0 ? 'text-stone-800' : ''}`} />
                 {wishlistCount > 0 && (
-                  <span className="absolute top-0 right-0 bg-stone-900 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border-2 border-white transform translate-x-1 -translate-y-0.5 shadow-sm">
-                    {wishlistCount}
+                  <span className="absolute -top-0.5 -right-0.5 bg-red-600 text-white text-[10px] font-bold min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full border-2 border-white shadow-sm animate-scale-in">
+                    {wishlistCount > 99 ? '99+' : wishlistCount}
                   </span>
                 )}
               </Link>
@@ -279,7 +289,7 @@ export default function Header() {
           </div>
         </div>
 
-        {/* 🔥 LUXURY MEGA MENU (FRAMER MOTION) */}
+        {/* 櫨 LUXURY MEGA MENU (FRAMER MOTION) */}
         <AnimatePresence>
           {isMegaMenuOpen && (
             <motion.div

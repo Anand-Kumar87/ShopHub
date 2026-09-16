@@ -3,11 +3,12 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { FiAlertTriangle, FiRefreshCw, FiHome } from 'react-icons/fi';
+import { captureException } from './utils/logger';
 
 export default function Error({ error, reset }) {
     useEffect(() => {
-        // Log the error to an error reporting service
-        console.error('Application Error:', error);
+        // Log the error to centralized telemetry service
+        captureException(error, { metadata: { source: 'app/error.js' } });
     }, [error]);
 
     return (

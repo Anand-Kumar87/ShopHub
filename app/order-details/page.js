@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import {
     FiArrowLeft,
     FiAlertCircle,
@@ -16,46 +17,84 @@ import {
     FiPackage,
     FiCreditCard
 } from 'react-icons/fi';
+import { supabase } from '../utils/supabase';
 
 export default function OrderDetailsPage() {
+    const router = useRouter();
     const [mounted, setMounted] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [orderData, setOrderData] = useState(null);
 
-    // Hydration & Data Loading
+    // Hydration & Real Order Loading
     useEffect(() => {
         setMounted(true);
-        try {
-            const savedOrder = localStorage.getItem('shophub_order');
-            if (savedOrder) {
-                setOrderData(JSON.parse(savedOrder));
+
+        async function loadOrder() {
+            setLoading(true);
+            try {
+                const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+                const orderId = params?.get('id') || params?.get('orderNumber');
+
+                if (orderId) {
+                    // 1. Fetch from Supabase Orders Table
+                    const { data, error } = await supabase
+                        .from('orders')
+                        .select('*')
+                        .or(`id.eq.${orderId},orderNumber.eq.${orderId}`)
+                        .maybeSingle();
+
+                    if (data && !error) {
+                        const parsedItems = typeof data.items === 'string' ? JSON.parse(data.items) : (data.items || []);
+                        const parsedShipping = typeof data.shipping_address === 'string'
+                            ? { address: data.shipping_address, firstName: data.customerName || 'Customer', lastName: '', email: data.email || '', phone: '' }
+                            : (data.shipping_address || { address: 'Not provided', firstName: data.customerName || 'Customer', lastName: '', email: data.email || '', phone: '' });
+
+                        const formattedOrder = {
+                            orderNumber: data.orderNumber || data.id,
+                            orderDate: data.created_at || new Date().toISOString(),
+                            status: data.status || 'Processing',
+                            items: parsedItems.map(item => ({
+                                name: item.name || item.title || 'Product',
+                                price: Number(item.price) || 0,
+                                quantity: Number(item.quantity) || 1,
+                                image: item.image || item.images?.[0] || 'https://images.unsplash.com/photo-1612196808214-b8e1d6145a8c?auto=format&fit=crop&w=400&q=80'
+                            })),
+                            shipping: parsedShipping,
+                            payment: { method: data.payment_method || 'Online Payment' },
+                            totals: data.totals || {
+                                subtotal: Number(data.total_amount) || 0,
+                                shipping: Number(data.shipping) || 0,
+                                tax: 0,
+                                total: Number(data.total_amount) || 0
+                            }
+                        };
+
+                        setOrderData(formattedOrder);
+                        setLoading(false);
+                        return;
+                    }
+                }
+
+                // 2. Fallback to localStorage recent order
+                const savedOrder = localStorage.getItem('shophub_order');
+                if (savedOrder) {
+                    setOrderData(JSON.parse(savedOrder));
+                }
+            } catch (error) {
+                console.error('Error loading order data:', error);
+            } finally {
+                setLoading(false);
             }
-        } catch (error) {
-            console.error('Error loading order data:', error);
         }
+
+        loadOrder();
     }, []);
 
-    // Load Demo Data for Testing
-    const loadDemoOrder = () => {
-        const demoOrder = {
-            orderNumber: 'SHP-847291',
-            orderDate: new Date().toISOString(),
-            status: 'Processing',
-            items: [
-                { name: 'Minimalist Stone Vase', price: 89.00, quantity: 1, image: 'https://images.unsplash.com/photo-1612196808214-b8e1d6145a8c?auto=format&fit=crop&w=400&q=80' },
-                { name: 'Linen Blend Throw', price: 125.00, quantity: 2, image: 'https://images.unsplash.com/photo-1580828325281-b5860d70eb06?auto=format&fit=crop&w=400&q=80' }
-            ],
-            shipping: { firstName: 'Elena', lastName: 'Rossi', email: 'elena@example.com', phone: '+1 234 567 890', address: '124 Luxury Ave, Suite 4B', city: 'Milan', state: 'Lombardy', postalCode: '20121', country: 'Italy' },
-            payment: { method: 'credit-card' },
-            totals: { subtotal: 339.00, shipping: 0, tax: 28.50, total: 367.50 }
-        };
-        setOrderData(demoOrder);
-        localStorage.setItem('shophub_order', JSON.stringify(demoOrder));
-    };
-
     // Formatters
-    const formatCurrency = (amount) => `$${parseFloat(amount).toFixed(2)}`;
+    const formatCurrency = (amount) => `$${parseFloat(amount || 0).toFixed(2)}`;
 
     const formatDate = (dateString) => {
+        if (!dateString) return 'Recent';
         const date = new Date(dateString);
         return date.toLocaleDateString('en-US', {
             year: 'numeric',
@@ -65,6 +104,7 @@ export default function OrderDetailsPage() {
     };
 
     const getEstimatedDelivery = (dateString) => {
+        if (!dateString) return '5-7 business days';
         const deliveryDate = new Date(dateString);
         deliveryDate.setDate(deliveryDate.getDate() + 5);
         return `${deliveryDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`;
@@ -84,15 +124,26 @@ export default function OrderDetailsPage() {
         const methods = {
             'credit-card': 'Credit Card',
             'paypal': 'PayPal',
+            'stripe': 'Stripe Secure Checkout',
+            'razorpay': 'Razorpay Instant UPI / Card',
+            'cod': 'Cash on Delivery',
             'bank-transfer': 'Bank Transfer'
         };
-        return methods[method] || method;
+        return methods[method] || method || 'Direct Payment';
     };
 
-    // Handlers for sidebar actions
-    const handleTrackOrder = () => alert('Tracking system integration pending. Status: PROCESSING');
-    const handleDownloadInvoice = () => alert('Generating high-res PDF invoice...');
-    const handleContactSupport = () => window.location.href = `mailto:concierge@shophub.com?subject=Inquiry regarding Order ${orderData?.orderNumber}`;
+    // Real Handlers for sidebar actions
+    const handleTrackOrder = () => {
+        router.push('/account?tab=orders');
+    };
+
+    const handleDownloadInvoice = () => {
+        window.print();
+    };
+
+    const handleContactSupport = () => {
+        window.location.href = `mailto:concierge@shophub.com?subject=Inquiry regarding Order ${orderData?.orderNumber || ''}`;
+    };
 
     // Prevent hydration mismatch
     if (!mounted) return null;
@@ -101,7 +152,7 @@ export default function OrderDetailsPage() {
         <main className="animate-fade-in bg-white min-h-screen pb-24">
 
             {/* Minimalist Editorial Header */}
-            <div className="bg-stone-50 pt-24 pb-12 border-b border-stone-200 px-4">
+            <div className="bg-stone-50 pt-24 pb-12 border-b border-stone-200 px-4 print:hidden">
                 <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
                     <div className="text-center md:text-left">
                         <span className="text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-2 block">
@@ -119,21 +170,27 @@ export default function OrderDetailsPage() {
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12">
 
-                {/* Not Found State */}
-                {!orderData ? (
+                {/* Loading State */}
+                {loading ? (
+                    <div className="text-center py-20">
+                        <div className="animate-spin h-8 w-8 border-2 border-stone-900 border-t-transparent rounded-full mx-auto mb-4"></div>
+                        <p className="text-xs font-bold tracking-widest uppercase text-stone-400">Loading Order Details...</p>
+                    </div>
+                ) : !orderData ? (
+                    /* Not Found State */
                     <div className="animate-fade-in text-center py-20 max-w-md mx-auto">
                         <div className="w-16 h-16 bg-stone-50 rounded-full flex items-center justify-center mx-auto mb-6 text-stone-400">
                             <FiPackage size={24} />
                         </div>
                         <h2 className="text-2xl font-light text-stone-900 mb-3">No Order Found</h2>
                         <p className="text-sm text-stone-500 mb-8 leading-relaxed">
-                            We couldn't find the details for this order. It might have been cleared from your local session.
+                            We couldn't find the details for this order. You can view all your orders in your account dashboard.
                         </p>
                         <div className="flex flex-col gap-3">
-                            <button onClick={loadDemoOrder} className="w-full bg-stone-900 text-white text-xs font-bold tracking-widest uppercase px-8 py-4 rounded-full hover:bg-stone-800 transition-colors shadow-lg shadow-stone-900/10">
-                                Load Demo Order
-                            </button>
-                            <Link href="/shop" className="w-full bg-white text-stone-900 border border-stone-200 text-xs font-bold tracking-widest uppercase px-8 py-4 rounded-full hover:bg-stone-50 transition-colors">
+                            <Link href="/account?tab=orders" className="w-full bg-stone-900 text-white text-xs font-bold tracking-widest uppercase px-8 py-4 rounded-full hover:bg-stone-800 transition-colors shadow-lg shadow-stone-900/10 text-center">
+                                View My Orders
+                            </Link>
+                            <Link href="/shop" className="w-full bg-white text-stone-900 border border-stone-200 text-xs font-bold tracking-widest uppercase px-8 py-4 rounded-full hover:bg-stone-50 transition-colors text-center">
                                 Continue Shopping
                             </Link>
                         </div>
@@ -269,7 +326,7 @@ export default function OrderDetailsPage() {
                             </div>
 
                             {/* Order Actions */}
-                            <div className="space-y-3">
+                            <div className="space-y-3 print:hidden">
                                 <button onClick={handleTrackOrder} className="w-full bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold tracking-widest uppercase py-4 rounded-full flex items-center justify-center gap-2 transition-colors shadow-lg shadow-stone-900/10">
                                     <FiTruck size={14} /> Track Package
                                 </button>
@@ -279,7 +336,7 @@ export default function OrderDetailsPage() {
                             </div>
 
                             {/* Need Help Section */}
-                            <div className="bg-stone-50 rounded-3xl p-8 border border-stone-100 text-center">
+                            <div className="bg-stone-50 rounded-3xl p-8 border border-stone-100 text-center print:hidden">
                                 <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-4 text-stone-900 shadow-sm">
                                     <FiHeadphones size={18} />
                                 </div>

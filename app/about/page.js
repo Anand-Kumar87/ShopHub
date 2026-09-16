@@ -177,7 +177,7 @@ export default function AboutPage() {
                         Join our community of discerning clientele and discover a curated selection of pieces designed to elevate your everyday.
                     </p>
                     <div className="flex flex-col sm:flex-row justify-center gap-4">
-                        <Link href="/shop" className="bg-white text-stone-900 text-xs font-bold tracking-widest uppercase px-10 py-4 rounded-full hover:bg-stone-200 transition-colors">
+                        <Link href="/categories" className="bg-white text-stone-900 text-xs font-bold tracking-widest uppercase px-10 py-4 rounded-full hover:bg-stone-200 transition-colors">
                             Explore Collections
                         </Link>
                         <Link href="/contact" className="bg-transparent border border-stone-500 text-white text-xs font-bold tracking-widest uppercase px-10 py-4 rounded-full hover:border-white transition-colors">

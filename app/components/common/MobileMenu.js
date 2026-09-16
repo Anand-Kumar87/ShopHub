@@ -5,30 +5,44 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { FiX, FiUser, FiHeart, FiBox, FiLogOut } from 'react-icons/fi';
 
+// 🔥 NEW IMPORTS FOR PROPER SIGNOUT
+import { supabase } from '../../utils/supabase';
+import toast from 'react-hot-toast';
+
 // Components & Contexts
 import CurrencySelector from '../CurrencySelector';
 import { useWishlist } from '../../context/WishlistContext';
+import { useAuth } from '../../context/AuthContext';
 
 export default function MobileMenu({ onClose }) {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState(null);
+  const { profile: authProfile, isAuthenticated, signOut: authSignOut } = useAuth() || {};
+  const currentUser = isAuthenticated ? authProfile : null;
   const { wishlistCount } = useWishlist() || { wishlistCount: 0 };
 
-  // Fetch user state on mount
-  useEffect(() => {
-    const userStr = localStorage.getItem('currentUser');
-    if (userStr) {
-      setCurrentUser(JSON.parse(userStr));
-    }
-  }, []);
+  // 🔥 SECURE SIGN OUT HANDLER (FIXED GHOST SESSION FOR MOBILE)
+  const handleSignOut = async () => {
+    try {
+      if (authSignOut) {
+        await authSignOut();
+      } else {
+        await supabase.auth.signOut();
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('shophub_db_orders');
+        localStorage.removeItem('shophub_current_user');
+        sessionStorage.clear();
+      }
 
-  // Handle Sign Out from Mobile
-  const handleSignOut = () => {
-    localStorage.removeItem('currentUser');
-    setCurrentUser(null);
-    window.dispatchEvent(new Event('userStateChange'));
-    onClose();
-    router.push('/');
+      toast.success("Signed out securely.");
+      onClose();
+
+      // Hard redirect and refresh to clear cached pages
+      window.location.assign('/');
+
+    } catch (error) {
+      console.error("Sign out error:", error);
+      toast.error("Failed to sign out properly.");
+    }
   };
 
   return (
@@ -59,9 +73,9 @@ export default function MobileMenu({ onClose }) {
         <div className="flex-1 overflow-y-auto py-6 px-6 flex flex-col gap-8 hide-scrollbar">
 
           {/* Currency Selector Added Here */}
-          <div>
+          <div className="relative z-30">
             <p className="text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-3">Preferences</p>
-            <CurrencySelector />
+            <CurrencySelector align="left" fullWidth={true} />
           </div>
 
           {/* Main Navigation */}
@@ -107,12 +121,13 @@ export default function MobileMenu({ onClose }) {
                 <Link href="/wishlist" onClick={onClose} className="flex items-center gap-3 text-sm font-medium text-stone-600 hover:text-stone-900">
                   <FiHeart size={18} className="text-stone-400" /> Wishlist
                   {wishlistCount > 0 && (
-                    <span className="bg-stone-900 text-white text-[9px] font-bold px-2 py-0.5 rounded-full ml-auto">
+                    <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full ml-auto shadow-sm">
                       {wishlistCount}
                     </span>
                   )}
                 </Link>
 
+                {/* 🔥 Updated Button with new handleSignOut */}
                 <button onClick={handleSignOut} className="flex items-center gap-3 text-sm font-bold text-red-500 mt-3 pt-4 border-t border-stone-50">
                   <FiLogOut size={18} /> Sign Out
                 </button>
@@ -129,7 +144,7 @@ export default function MobileMenu({ onClose }) {
                 <Link href="/wishlist" onClick={onClose} className="flex items-center gap-3 text-sm font-medium text-stone-600 hover:text-stone-900 mt-4">
                   <FiHeart size={18} className="text-stone-400" /> Wishlist
                   {wishlistCount > 0 && (
-                    <span className="bg-stone-900 text-white text-[9px] font-bold px-2 py-0.5 rounded-full ml-auto">
+                    <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full ml-auto shadow-sm">
                       {wishlistCount}
                     </span>
                   )}

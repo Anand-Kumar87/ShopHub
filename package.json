@@ -6,8 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "tsc --noEmit",
-    "postinstall": "npx prisma generate"
+    "lint": "tsc --noEmit"
   },
   "keywords": [
     "authentication",
@@ -53,6 +52,6 @@
     "typescript": "^6.0.3"
   },
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=18.17.0"
   }
 }

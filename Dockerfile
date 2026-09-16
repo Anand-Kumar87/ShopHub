@@ -21,7 +21,6 @@ WORKDIR /app
 
 # Copy dependency manifests
 COPY package.json package-lock.json* ./
-COPY prisma ./prisma/
 
 # Install exact dependencies with caching layer
 RUN npm ci --legacy-peer-deps
